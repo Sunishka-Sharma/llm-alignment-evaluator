@@ -1,119 +1,120 @@
 # 🔍 LLM Alignment Evaluator
 
-A unified framework for evaluating LLM behavior on subtle moral, safety, and consistency dimensions, with optional constitutional patching.
+A focused exploration of LLM behavior evaluation and alignment techniques, built during an intensive learning sprint.
 
-## 🎯 Core Features
+## 🎯 Project Context
 
-- 🔁 **Multi-Dimensional Evaluation**: Tests model responses across helpfulness, harmlessness, ethical judgment, and honesty
-- ⚖️ **Perspective Shifting**: Analyzes how responses change based on context and user vulnerability
-- 📜 **Constitutional Rewriting**: Light implementation of value-aligned prompt modification
-- 📊 **Visual Analysis**: Streamlit dashboard for exploring evaluation results
-- 🌈 **Edge Case Detection**: Identifies inconsistencies in model behavior
+This project was developed as a practical exercise in understanding model behavior evaluation and alignment techniques, specifically targeting skills relevant to AI Safety and Model Behavior roles. Built in a focused 3-day sprint, it demonstrates key concepts in:
 
-## 🔬 Motivation & Novel Contributions
+- Model output evaluation across ethical dimensions
+- Constitutional AI implementation
+- Behavioral edge case detection
+- Perspective-based testing
 
-Built in a focused sprint to demonstrate practical alignment thinking and model behavior analysis. Key insights:
+## ✨ Features
 
-1. **Safety-Consistency Divergence**: Models often exhibit misalignment between refusing harmful actions and justifying subtle unethical behavior
-2. **Context-Dependent Ethics**: Responses can vary significantly based on how questions are framed
-3. **Lightweight Constitutional Patching**: Simple rules can help align model outputs at inference time
+- 🔁 Multi-dimensional evaluation (helpfulness, harmlessness, ethical judgment)
+- ⚖️ Behavioral consistency testing across contexts
+- 📜 Constitutional rewriting with rule-based alignment
+- 🌈 Perspective-shifting analysis for contextual judgment
+- 📊 Interactive dashboard for result visualization
 
-### 📚 Key Papers Referenced
+## 🔬 Motivation & Alignment Focus
+
+Inspired by Anthropic's research on Constitutional AI and red-teaming, this project explores practical implementations of concepts from leading AI alignment research, focusing on:
+
+1. **Behavioral Evaluation**: Systematic assessment of model outputs across safety and ethical dimensions
+2. **Constitutional Guidance**: Rule-based approach to steering model behavior
+3. **Edge Case Detection**: Identifying subtle misalignment in model responses
+4. **Perspective Analysis**: Testing model consistency across different contexts
+
+### 📚 Key Papers & Implementations
 - [Constitutional AI: Harmlessness from AI Feedback](https://arxiv.org/abs/2212.08073)
+  - Implemented: Rule-based response rewriting
+  - Adapted: Multi-dimensional safety scoring
+  
 - [Red Teaming Language Models with Language Models](https://arxiv.org/abs/2209.07858)
-- [Training language models to follow instructions with human feedback](https://arxiv.org/abs/2203.02155)
+  - Implemented: Edge case detection
+  - Adapted: Perspective shifting tests
 
-## 🛠️ Quick Start
+- [Training Language Models to Follow Instructions with Human Feedback](https://arxiv.org/abs/2203.02155)
+  - Implemented: Basic preference collection
+  - Adapted: Evaluation metrics
+
+## 🏗️ Project Structure
+
+```
+llm-alignment-evaluator/
+├── src/
+│   ├── evaluator.py          # Core evaluation logic
+│   ├── constitutional_rewriter.py  # Rule-based alignment
+│   ├── analyze_results.py    # Analysis utilities
+│   └── main.py              # Entry point
+├── prompts/                  # Test scenarios
+│   └── eval_prompts.csv     # Evaluation prompts
+├── dashboard/               # Streamlit visualization
+│   └── streamlit_app.py    # Interactive UI
+├── results/                 # Evaluation outputs
+├── tests/                  # Unit tests
+└── docs/                   # Documentation
+```
+
+## 🎯 Key Components
+
+1. **Evaluation Framework**
+   - Multi-dimensional scoring system
+   - Edge case detection
+   - Perspective shifting analysis
+
+2. **Constitutional AI Practice**
+   - Rule-based response modification
+   - Value alignment techniques
+   - Safety boundary enforcement
+
+3. **Analysis & Visualization**
+   - Interactive Streamlit dashboard
+   - Result interpretation methods
+   - Cross-model comparison
+
+## 🚀 Quick Start
 
 ```bash
-# Clone the repository
+# Clone and setup
 git clone https://github.com/yourusername/llm-alignment-evaluator.git
 cd llm-alignment-evaluator
-
-# Run setup script
 ./setup.sh
 
-# Add your API keys to .env file
+# Add API keys
 cp .env.example .env
 # Edit .env with your keys
 
 # Run evaluation
 python src/main.py --prompts prompts/eval_prompts.csv --model gpt-3.5-turbo
 
-# Run with constitutional rewriting
-python src/main.py --prompts prompts/eval_prompts.csv --model gpt-3.5-turbo --rewrite
-
 # Launch dashboard
-cd dashboard && streamlit run streamlit_app.py
+streamlit run dashboard/streamlit_app.py
 ```
 
-## 📊 Example Results
+## 🚧 Limitations
 
-The evaluator produces several types of insights:
+This project is a learning implementation, not a production-ready tool. Key limitations:
 
-1. **Dimension Scores** (0-3 scale):
-   - Helpfulness: How useful and clear is the response?
-   - Harmlessness: Does it avoid promoting harmful actions?
-   - Ethical Judgment: Quality of moral reasoning
-   - Honesty: Transparency about uncertainty
+- Uses simplified scoring heuristics
+- Limited to single-turn interactions
+- Basic constitutional rule implementation
 
-2. **Perspective Analysis**:
-   - How do responses change when framed for different audiences?
-   - Measures drift in ethical judgment across contexts
-
-3. **Constitutional Improvements**:
-   - Before/after comparisons of rewritten prompts
-   - Success rate of harm reduction
-
-## 🏗️ Project Structure
-
-```
-llm-alignment-evaluator/
-├── prompts/                  # Test prompts by category
-├── src/                      # Core evaluation logic
-│   ├── evaluator.py         # Response scoring
-│   ├── constitutional_rewriter.py  # Value alignment
-│   └── analyze_results.py   # Metrics & visualization
-├── dashboard/               # Streamlit interface
-├── results/                 # Output data & reports
-├── tests/                   # Unit tests
-└── README.md
-```
-
-## 🔄 Evaluation Process
-
-1. **Prompt Loading**: Categorized test cases from CSV
-2. **Model Querying**: Supports OpenAI and Anthropic APIs
-3. **Multi-Dimensional Scoring**: Rule-based evaluation
-4. **Perspective Testing**: Context-shifted prompts
-5. **Constitutional Rewriting**: Value-aligned modifications
-6. **Analysis & Visualization**: Trends and patterns
-
-## 🎯 Future Work
+## 💡 Future Work
 
 - Automated scoring using fine-tuned classifiers
-- Expanded rule set for constitutional rewriting
 - Multi-turn conversation evaluation
+- More sophisticated constitutional rules
+- Extended perspective analysis
 - Cross-model comparative analysis
-- Automated red-teaming
 
-## 📝 Citation
+## 📣 Author Notes
 
-If you use this evaluator in your research, please cite:
+This project was built in a focused sprint to demonstrate practical alignment thinking and model behavior analysis. It serves as a learning implementation for understanding key concepts in AI alignment and safety evaluation.
 
-```bibtex
-@software{llm_alignment_evaluator,
-  title = {LLM Alignment Evaluator},
-  author = {Your Name},
-  year = {2024},
-  url = {https://github.com/yourusername/llm-alignment-evaluator}
-}
-```
-
-## 🤝 Contributing
-
-Contributions welcome! Please check out our [contribution guidelines](CONTRIBUTING.md).
-
-## 📄 License
+## 📝 License
 
 MIT License - see [LICENSE](LICENSE) for details. 

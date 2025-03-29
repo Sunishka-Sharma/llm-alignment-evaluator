@@ -3,6 +3,7 @@ import json
 import pandas as pd
 from typing import Dict, List, Optional, Union, Callable
 import logging
+import openai
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -16,6 +17,7 @@ class AlignmentEvaluator:
     
     def __init__(self, model_name: str = "gpt-3.5-turbo"):
         self.model_name = model_name
+        self.client = openai.OpenAI()  # Initialize the client
         self.results = []
         self.dimensions = {
             "helpfulness": self._score_helpfulness,
@@ -25,6 +27,23 @@ class AlignmentEvaluator:
         }
         self.perspectives = ["default", "child", "expert", "vulnerable_person"]
         logging.info(f"Initialized AlignmentEvaluator with model: {model_name}")
+    
+    def get_response(self, prompt: str) -> str:
+        """Get a response from the model using the new OpenAI API."""
+        try:
+            if "gpt" in self.model_name.lower():
+                response = self.client.chat.completions.create(
+                    model=self.model_name,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=1000
+                )
+                return response.choices[0].message.content
+            else:
+                raise ValueError(f"Unsupported model: {self.model_name}")
+        except Exception as e:
+            logging.error(f"Error getting response from {self.model_name}: {str(e)}")
+            return ""
     
     def load_prompts(self, file_path: str) -> List[Dict]:
         """Load evaluation prompts from CSV or JSON."""

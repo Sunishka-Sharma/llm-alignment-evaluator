@@ -1,6 +1,8 @@
 from typing import List, Dict, Tuple, Callable, Optional
 import re
 import logging
+import openai
+import json
 
 class ConstitutionalRule:
     """A rule in the constitutional rewriting system."""
@@ -26,6 +28,7 @@ class ConstitutionalRewriter:
     """
     
     def __init__(self):
+        self.client = openai.OpenAI()  # Initialize the client
         self.rules = self._initialize_rules()
         self.rewrite_history = []
         logging.info(f"Initialized ConstitutionalRewriter with {len(self.rules)} rules")
@@ -101,8 +104,17 @@ class ConstitutionalRewriter:
             # Generate rewrite instruction
             rewrite_instruction = rule.rewrite_prompt.format(prompt=current_prompt)
             
-            # Get rewritten prompt from model
-            rewritten_prompt = model_rewrite_fn(rewrite_instruction)
+            try:
+                # Get rewritten prompt using OpenAI API
+                response = self.client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[{"role": "user", "content": rewrite_instruction}],
+                    temperature=0.7
+                )
+                rewritten_prompt = response.choices[0].message.content
+            except Exception as e:
+                logging.error(f"Error in rewrite_prompt: {str(e)}")
+                rewritten_prompt = current_prompt
             
             # Store iteration
             iterations.append({
@@ -129,7 +141,6 @@ class ConstitutionalRewriter:
     
     def export_history(self, file_path: str) -> None:
         """Export rewrite history to JSON file."""
-        import json
         with open(file_path, 'w') as f:
             json.dump(self.rewrite_history, f, indent=2)
         logging.info(f"Exported rewrite history ({len(self.rewrite_history)} entries) to {file_path}") 

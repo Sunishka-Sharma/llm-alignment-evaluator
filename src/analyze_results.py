@@ -7,6 +7,7 @@ import seaborn as sns
 from typing import List, Dict, Optional
 import ast
 import time
+import logging
 
 class AlignmentAnalyzer:
     """
@@ -619,6 +620,269 @@ class AlignmentAnalyzer:
         print(f"Exported metadata explanations to {metadata_path}")
         
         return df
+
+    def generate_cross_model_report(self, output_file: str = "results/analysis/cross_model_report.md") -> str:
+        """
+        Generate a comprehensive report on cross-model evaluation.
+        
+        Args:
+            output_file: Path to save the report
+            
+        Returns:
+            Path to the generated report
+        """
+        if len(self.model_results) < 2:
+            logging.warning("Need at least two models for cross-model evaluation")
+            return None
+            
+        models = list(self.model_results.keys())
+        dimensions = ["helpfulness", "harmlessness", "ethical_judgment", "honesty"]
+        
+        report = ["# Cross-Model Evaluation Report\n"]
+        report.append("This report analyzes how different models evaluate each other's responses.\n")
+        
+        # Overall statistics
+        report.append("## Overview\n")
+        report.append(f"- Models analyzed: {', '.join(models)}")
+        report.append(f"- Dimensions compared: {', '.join(dimensions)}")
+        
+        # Calculate agreement rates
+        agreement_data = []
+        for i, model1 in enumerate(models):
+            for j, model2 in enumerate(models):
+                if i < j:  # Only compare unique pairs
+                    df1 = self.model_results[model1]
+                    df2 = self.model_results[model2]
+                    
+                    # Agreement statistics
+                    agreements = []
+                    dimension_agreements = {}
+                    
+                    # Calculate agreement percentage for each dimension
+                    for dim in dimensions:
+                        scores1 = df1[f'scores.{dim} (0-3)']
+                        scores2 = df2[f'scores.{dim} (0-3)']
+                        
+                        # Consider agreement within 0.5 points
+                        agree_count = np.sum(np.abs(scores1 - scores2) <= 0.5)
+                        agree_pct = (agree_count / len(scores1)) * 100
+                        
+                        dimension_agreements[dim] = agree_pct
+                        agreements.append(agree_pct)
+                    
+                    # Calculate average score difference
+                    avg_diffs = []
+                    for dim in dimensions:
+                        scores1 = df1[f'scores.{dim} (0-3)']
+                        scores2 = df2[f'scores.{dim} (0-3)']
+                        avg_diff = np.mean(np.abs(scores1 - scores2))
+                        avg_diffs.append(avg_diff)
+                    
+                    # Add to agreement data
+                    agreement_data.append({
+                        'model_pair': f'{model1} vs {model2}',
+                        'avg_agreement': np.mean(agreements),
+                        'dimension_agreements': dimension_agreements,
+                        'avg_score_diff': np.mean(avg_diffs)
+                    })
+        
+        # Overall agreement statistics
+        report.append("\n## Agreement Statistics\n")
+        
+        if agreement_data:
+            overall_agreement = np.mean([d['avg_agreement'] for d in agreement_data])
+            report.append(f"- Overall agreement rate: {overall_agreement:.1f}%")
+            
+            min_agreement = np.min([d['avg_agreement'] for d in agreement_data])
+            max_agreement = np.max([d['avg_agreement'] for d in agreement_data])
+            report.append(f"- Agreement range: {min_agreement:.1f}% - {max_agreement:.1f}%")
+            
+            avg_score_diff = np.mean([d['avg_score_diff'] for d in agreement_data])
+            report.append(f"- Average score difference: {avg_score_diff:.2f} points\n")
+            
+            # Agreement by dimension
+            report.append("\n### Agreement by Dimension\n")
+            for dim in dimensions:
+                dim_agreements = [d['dimension_agreements'][dim] for d in agreement_data]
+                avg_dim_agreement = np.mean(dim_agreements)
+                report.append(f"- {dim}: {avg_dim_agreement:.1f}% agreement")
+            
+            # Agreement by model pair
+            report.append("\n### Agreement by Model Pair\n")
+            for agreement in agreement_data:
+                report.append(f"#### {agreement['model_pair']}")
+                report.append(f"- Overall agreement: {agreement['avg_agreement']:.1f}%")
+                report.append(f"- Average score difference: {agreement['avg_score_diff']:.2f} points")
+                
+                report.append("\nDimension breakdown:")
+                for dim, agree_pct in agreement['dimension_agreements'].items():
+                    report.append(f"- {dim}: {agree_pct:.1f}% agreement")
+                report.append("")
+        
+        # Analyze cross-evaluation data
+        report.append("\n## Cross-Evaluation Analysis\n")
+        
+        cross_eval_summaries = []
+        for model in models:
+            df = self.model_results[model]
+            
+            # Check if there's cross-evaluation data for this model
+            cross_eval_cols = [col for col in df.columns if col.startswith('cross_eval.')]
+            
+            if cross_eval_cols:
+                # Create summary data
+                cross_eval_summary = {
+                    'model': model,
+                    'dimensions': {}
+                }
+                
+                # Extract cross-evaluation scores for each dimension
+                for dim in dimensions:
+                    cross_col = f'cross_eval.{dim} (0-3)'
+                    self_col = f'scores.{dim} (0-3)'
+                    
+                    if cross_col in df.columns:
+                        # Get non-NaN rows
+                        valid_data = df[[cross_col, self_col]].dropna()
+                        
+                        if not valid_data.empty:
+                            cross_scores = valid_data[cross_col]
+                            self_scores = valid_data[self_col]
+                            
+                            avg_cross = cross_scores.mean()
+                            avg_self = self_scores.mean()
+                            diff = avg_cross - avg_self
+                            
+                            # Calculate agreement rate
+                            agree_count = np.sum(np.abs(cross_scores - self_scores) <= 0.5)
+                            agree_pct = (agree_count / len(cross_scores)) * 100
+                            
+                            cross_eval_summary['dimensions'][dim] = {
+                                'avg_cross': avg_cross,
+                                'avg_self': avg_self,
+                                'diff': diff,
+                                'agreement': agree_pct
+                            }
+                
+                cross_eval_summaries.append(cross_eval_summary)
+        
+        # Report cross-evaluation findings
+        if cross_eval_summaries:
+            report.append("### Self vs External Evaluation\n")
+            
+            for summary in cross_eval_summaries:
+                model = summary['model']
+                report.append(f"#### {model}\n")
+                
+                # Get dimensions with data
+                valid_dims = [dim for dim in dimensions if dim in summary['dimensions']]
+                
+                if valid_dims:
+                    # Calculate overall statistics
+                    avg_diff = np.mean([summary['dimensions'][dim]['diff'] for dim in valid_dims])
+                    avg_agreement = np.mean([summary['dimensions'][dim]['agreement'] for dim in valid_dims])
+                    
+                    # Report overview
+                    report.append(f"- Average score difference (external - self): {avg_diff:.2f} points")
+                    report.append(f"- Agreement rate: {avg_agreement:.1f}%")
+                    
+                    # Report by dimension
+                    report.append("\nDimension breakdown:")
+                    for dim in valid_dims:
+                        data = summary['dimensions'][dim]
+                        report.append(f"- {dim}:")
+                        report.append(f"  - Self-score: {data['avg_self']:.2f}/3")
+                        report.append(f"  - External score: {data['avg_cross']:.2f}/3")
+                        report.append(f"  - Difference: {data['diff']:.2f} points")
+                        report.append(f"  - Agreement: {data['agreement']:.1f}%")
+                    
+                    report.append("")  # Add blank line
+        
+        # Find major discrepancies
+        report.append("\n## Major Discrepancies\n")
+        
+        # Look for categories with major disagreements
+        category_discrepancies = {}
+        
+        for model in models:
+            df = self.model_results[model]
+            
+            # Check if cross-evaluation data exists
+            cross_cols = [col for col in df.columns if col.startswith('cross_eval.')]
+            if not cross_cols:
+                continue
+                
+            # Group by category
+            for category in df['category'].unique():
+                cat_df = df[df['category'] == category]
+                
+                # Calculate discrepancies for each dimension
+                for dim in dimensions:
+                    cross_col = f'cross_eval.{dim} (0-3)'
+                    self_col = f'scores.{dim} (0-3)'
+                    
+                    if cross_col in cat_df.columns:
+                        # Get non-NaN values
+                        valid_data = cat_df[[cross_col, self_col]].dropna()
+                        
+                        if not valid_data.empty:
+                            # Calculate absolute differences
+                            diffs = np.abs(valid_data[cross_col] - valid_data[self_col])
+                            
+                            # Check for major discrepancies (>1 point)
+                            major_diffs = diffs[diffs > 1].count()
+                            
+                            if major_diffs > 0:
+                                discrepancy_pct = (major_diffs / len(diffs)) * 100
+                                
+                                if category not in category_discrepancies:
+                                    category_discrepancies[category] = []
+                                    
+                                category_discrepancies[category].append({
+                                    'model': model,
+                                    'dimension': dim,
+                                    'major_diff_count': major_diffs,
+                                    'total_samples': len(diffs),
+                                    'discrepancy_pct': discrepancy_pct
+                                })
+        
+        # Report category discrepancies
+        if category_discrepancies:
+            report.append("### Discrepancies by Category\n")
+            
+            # Sort categories by total discrepancy percentage
+            sorted_categories = sorted(
+                category_discrepancies.items(),
+                key=lambda x: sum(d['discrepancy_pct'] for d in x[1]),
+                reverse=True
+            )
+            
+            for category, discrepancies in sorted_categories:
+                report.append(f"#### {category}\n")
+                
+                # Calculate overall stats
+                total_diffs = sum(d['major_diff_count'] for d in discrepancies)
+                total_samples = sum(d['total_samples'] for d in discrepancies)
+                overall_pct = (total_diffs / total_samples) * 100 if total_samples > 0 else 0
+                
+                report.append(f"- Overall discrepancy rate: {overall_pct:.1f}% ({total_diffs}/{total_samples})")
+                
+                # Report details
+                for disc in discrepancies:
+                    report.append(f"- {disc['model']}, {disc['dimension']}: " +
+                                f"{disc['discrepancy_pct']:.1f}% ({disc['major_diff_count']}/{disc['total_samples']})")
+                
+                report.append("")  # Add blank line
+        else:
+            report.append("No major discrepancies found between self and external evaluations.\n")
+        
+        # Write report
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        with open(output_file, 'w') as f:
+            f.write('\n'.join(report))
+        
+        logging.info(f"Cross-model evaluation report saved to {output_file}")
+        return output_file
 
 def analyze_and_visualize(results_dir: str):
     """Analyze results and generate visualizations."""

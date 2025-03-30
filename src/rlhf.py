@@ -483,6 +483,17 @@ class MultiDimensionalRewardModel(RewardModel):
         }
         self.dimension_scalers = {dim: StandardScaler() for dim in self.dimensions}
         self.dimension_feedback = {dim: [] for dim in self.dimensions}
+        
+        # Cross-model evaluation data
+        self.cross_eval_data = []
+        
+        # Dimension mapping from cross-evaluation to alignment dimensions
+        self.cross_eval_mapping = {
+            "helpfulness": "helpfulness",
+            "safety": "harmlessness", 
+            "ethical_judgment": "ethical_judgment",
+            "clarity": "honesty"
+        }
     
     def collect_feedback(self, response: str, ratings: Dict, prompt: str = "", category: str = ""):
         """
@@ -520,6 +531,99 @@ class MultiDimensionalRewardModel(RewardModel):
                 "dimensions": ratings
             }
         })
+    
+    def add_cross_model_evaluation(self, cross_eval_data: List[Dict]) -> None:
+        """
+        Add cross-model evaluation data to enhance the reward model.
+        
+        Args:
+            cross_eval_data: List of cross-evaluation results from other models
+                Each item should be a dict with prompt, response, category, 
+                and dimension-specific evaluations
+        
+        This allows the reward model to leverage evaluations from different models,
+        combining self-evaluation with external perspectives for more robust scoring.
+        """
+        if not cross_eval_data:
+            logging.warning("No cross-model evaluation data provided")
+            return
+            
+        logging.info(f"Adding {len(cross_eval_data)} cross-model evaluations to reward model")
+        
+        for entry in cross_eval_data:
+            if not isinstance(entry, dict):
+                continue
+                
+            # Extract necessary data
+            response = entry.get("response", "")
+            prompt = entry.get("prompt", "")
+            category = entry.get("category", "")
+            evaluator = entry.get("evaluator", "unknown_model")
+            
+            # Skip if missing essential data
+            if not response or not prompt:
+                continue
+                
+            # Extract ratings from cross-evaluation
+            ratings = {}
+            for cross_dim, align_dim in self.cross_eval_mapping.items():
+                if cross_dim in entry and "score" in entry[cross_dim]:
+                    ratings[align_dim] = entry[cross_dim]["score"]
+            
+            # Skip if no valid ratings
+            if not ratings:
+                continue
+                
+            # Extract features
+            features = self.extract_features(response)
+            
+            # Store the cross-evaluation data
+            self.cross_eval_data.append({
+                "response": response,
+                "ratings": ratings,
+                "features": features,
+                "prompt": prompt,
+                "category": category,
+                "evaluator": evaluator
+            })
+            
+            # Add to dimension-specific feedback with weight factor
+            weight = 0.8  # Slightly lower weight than direct feedback
+            for dim, rating in ratings.items():
+                if dim in self.dimensions:
+                    self.dimension_feedback[dim].append({
+                        "response": response,
+                        "rating": rating,
+                        "features": features,
+                        "prompt": prompt,
+                        "category": category,
+                        "metadata": {
+                            "dimension": dim,
+                            "source": "cross_eval",
+                            "evaluator": evaluator,
+                            "weight": weight
+                        }
+                    })
+            
+            # Also add to overall model with averaged score
+            overall_rating = sum(ratings.values()) / len(ratings) if ratings else 0
+            self.feedback_data.append({
+                "response": response,
+                "rating": overall_rating,
+                "features": features,
+                "explanation": "",
+                "metadata": {
+                    "prompt": prompt,
+                    "category": category,
+                    "dimensions": ratings,
+                    "source": "cross_eval",
+                    "evaluator": evaluator,
+                    "weight": weight
+                }
+            })
+            
+        logging.info(f"Added {len(self.cross_eval_data)} cross-model evaluations to reward model")
+        return len(self.cross_eval_data)
     
     def train(self):
         """Train dimension-specific models and overall model."""

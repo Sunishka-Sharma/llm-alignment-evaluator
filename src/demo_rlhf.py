@@ -1,9 +1,33 @@
 #!/usr/bin/env python3
 """
-RLHF Model Behavior Enhancement Demo
+RLHF Model Behavior Enhancement Demo with Cross-Model Evaluation
 
 This script demonstrates the advanced RLHF implementation using 
-real-world examples from evaluation data.
+real-world examples from evaluation data, with integration of
+cross-model evaluation for more robust reward modeling.
+
+Key features:
+1. MultiDimensionalRewardModel: Scores responses across alignment dimensions
+2. Cross-model evaluation integration: Incorporates external model judgments
+3. Dynamic response improvement: Applies targeted enhancement strategies
+4. Visual analysis: Compares self vs cross-model evaluation
+
+Usage:
+    python src/demo_rlhf.py
+
+The script will:
+1. Load evaluation data from previous model runs
+2. Incorporate cross-model evaluations if available
+3. Train a multi-dimensional reward model
+4. Test response improvements with various strategies
+5. Generate visualizations and analysis of improvements
+6. Compare self-evaluation with cross-model evaluation
+
+Cross-model evaluation benefits:
+- More objective assessment of model behavior
+- Identification of blind spots in self-evaluation
+- Enhanced reward signals for more robust training
+- Better alignment with human preferences
 """
 
 import os
@@ -45,7 +69,7 @@ def load_evaluation_data(csv_path, max_samples=20):
         logging.error(f"Error loading evaluation data: {str(e)}")
         return []
 
-def visualize_improvements(trainer, output_dir=None):
+def visualize_improvements(trainer, output_dir=None, with_cross_eval=False):
     """Visualize the improvements made by the trainer."""
     analysis = trainer.analyze_improvements()
     if "dimensions_improved" not in analysis:
@@ -102,6 +126,84 @@ def visualize_improvements(trainer, output_dir=None):
         # Save or show the plot
         if output_dir:
             plt.savefig(os.path.join(output_dir, 'strategy_effectiveness.png'), dpi=300, bbox_inches='tight')
+        else:
+            plt.show()
+    
+    # If cross-evaluation data is available, create a comparison visualization
+    if with_cross_eval and hasattr(trainer.reward_model, 'cross_eval_data') and trainer.reward_model.cross_eval_data:
+        plt.figure(figsize=(12, 8))
+        
+        # Extract dimensions that have both self and cross evaluations
+        reward_model = trainer.reward_model
+        
+        # Check the training history for samples where we have both self and cross-eval
+        self_eval_scores = {dim: [] for dim in reward_model.dimensions}
+        cross_eval_scores = {dim: [] for dim in reward_model.dimensions}
+        
+        # Collect scores from the training history
+        for entry in trainer.training_history:
+            improved_scores = entry.get('improved_scores', {})
+            for dim in reward_model.dimensions:
+                if dim in improved_scores:
+                    self_eval_scores[dim].append(improved_scores[dim])
+        
+        # Collect scores from cross-evaluation data
+        for entry in reward_model.cross_eval_data:
+            ratings = entry.get('ratings', {})
+            for dim in reward_model.dimensions:
+                if dim in ratings:
+                    cross_eval_scores[dim].append(ratings[dim])
+        
+        # Prepare data for the plot
+        dims = []
+        self_avgs = []
+        cross_avgs = []
+        
+        for dim in reward_model.dimensions:
+            if self_eval_scores[dim] and cross_eval_scores[dim]:
+                dims.append(dim)
+                self_avgs.append(np.mean(self_eval_scores[dim]))
+                cross_avgs.append(np.mean(cross_eval_scores[dim]))
+        
+        if not dims:
+            logging.warning("No comparable dimensions found for self vs cross-eval visualization")
+            return
+            
+        # Set up plot
+        x = np.arange(len(dims))
+        width = 0.35
+        
+        fig, ax = plt.subplots(figsize=(12, 6))
+        self_bars = ax.bar(x - width/2, self_avgs, width, label='Self-Evaluation', color='#3498db')
+        cross_bars = ax.bar(x + width/2, cross_avgs, width, label='Cross-Model Evaluation', color='#e74c3c')
+        
+        # Add labels and title
+        ax.set_xlabel('Dimension')
+        ax.set_ylabel('Average Score (0-3)')
+        ax.set_title('Self vs Cross-Model Evaluation Comparison')
+        ax.set_xticks(x)
+        ax.set_xticklabels(dims)
+        ax.legend()
+        
+        # Add value labels on bars
+        def add_labels(bars):
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'{height:.2f}',
+                            xy=(bar.get_x() + bar.get_width() / 2, height),
+                            xytext=(0, 3),  # 3 points vertical offset
+                            textcoords="offset points",
+                            ha='center', va='bottom')
+                
+        add_labels(self_bars)
+        add_labels(cross_bars)
+        
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        
+        # Save or show the plot
+        if output_dir:
+            plt.savefig(os.path.join(output_dir, 'self_vs_cross_eval.png'), dpi=300, bbox_inches='tight')
+            logging.info(f"Saved self vs cross-evaluation comparison plot to {output_dir}")
         else:
             plt.show()
 
@@ -166,6 +268,35 @@ def get_available_model(data_dir):
     logging.error("No models with evaluation data found")
     return None
 
+def load_cross_evaluation_data(model_dir):
+    """Load cross-evaluation data from the model directory."""
+    cross_eval_path = os.path.join(model_dir, "cross_evaluation_results.json")
+    
+    if not os.path.exists(cross_eval_path):
+        logging.warning(f"No cross-evaluation data found at {cross_eval_path}")
+        return []
+    
+    try:
+        with open(cross_eval_path, 'r') as f:
+            cross_eval_data = json.load(f)
+        
+        logging.info(f"Loaded {len(cross_eval_data)} cross-evaluation entries")
+        
+        # Prepare data format for the reward model
+        processed_data = []
+        for entry in cross_eval_data:
+            # Ensure we have the necessary components
+            if not all(k in entry for k in ["category", "evaluator"]):
+                continue
+                
+            # The cross-evaluation data should already have the scores
+            processed_data.append(entry)
+            
+        return processed_data
+    except Exception as e:
+        logging.error(f"Error loading cross-evaluation data: {str(e)}")
+        return []
+
 def run_demo():
     """Run the main demonstration."""
     # Set up logging
@@ -181,7 +312,8 @@ def run_demo():
     if not model_name:
         return
     
-    csv_path = os.path.join(data_dir, model_name, "evaluation_results.csv")
+    model_dir = os.path.join(data_dir, model_name)
+    csv_path = os.path.join(model_dir, "evaluation_results.csv")
     logging.info(f"Using evaluation data from {model_name}")
     
     # Load evaluation data
@@ -201,6 +333,12 @@ def run_demo():
             prompt=sample["prompt"],
             category=sample["category"]
         )
+    
+    # Load and add cross-model evaluation data
+    cross_eval_data = load_cross_evaluation_data(model_dir)
+    if cross_eval_data:
+        logging.info(f"Adding {len(cross_eval_data)} cross-model evaluations")
+        reward_model.add_cross_model_evaluation(cross_eval_data)
     
     # Train the reward model
     logging.info("Training reward model...")
@@ -267,7 +405,7 @@ def run_demo():
         print(f"Improvement: {json.dumps(improvement, indent=2)}")
     
     # Visualize improvements
-    visualize_improvements(trainer, output_dir)
+    visualize_improvements(trainer, output_dir, with_cross_eval=True)
     
     # Save training history
     if output_dir:
@@ -293,6 +431,86 @@ def run_demo():
         print("\nMost effective strategies:")
         for strategy, gain in analysis["strategy_effectiveness"][:3]:  # Top 3
             print(f"  - {strategy}: {gain:.3f}")
+    
+    # Print cross-evaluation analysis
+    if hasattr(reward_model, 'cross_eval_data') and reward_model.cross_eval_data:
+        print("\n== CROSS-MODEL EVALUATION ANALYSIS ==")
+        print(f"Total cross-evaluations: {len(reward_model.cross_eval_data)}")
+        
+        # Get evaluator models
+        evaluators = set(entry.get('evaluator', 'unknown') for entry in reward_model.cross_eval_data)
+        print(f"Evaluator models: {', '.join(evaluators)}")
+        
+        # Calculate dimension-specific averages
+        cross_dim_scores = {dim: [] for dim in reward_model.dimensions}
+        for entry in reward_model.cross_eval_data:
+            ratings = entry.get('ratings', {})
+            for dim in reward_model.dimensions:
+                if dim in ratings:
+                    cross_dim_scores[dim].append(ratings[dim])
+        
+        print("\nCross-model evaluation scores by dimension:")
+        for dim, scores in cross_dim_scores.items():
+            if scores:
+                avg_score = sum(scores) / len(scores)
+                print(f"  - {dim}: {avg_score:.2f}/3 (based on {len(scores)} evaluations)")
+        
+        # Calculate agreement between self and cross evaluation
+        agreement_stats = {}
+        
+        # First, find all samples with both self and cross evaluation
+        for entry in trainer.training_history:
+            prompt = entry.get('prompt', '')
+            category = entry.get('category', '')
+            improved_scores = entry.get('improved_scores', {})
+            
+            # Find matching cross-evaluations
+            matches = [ce for ce in reward_model.cross_eval_data 
+                      if ce.get('prompt') == prompt and ce.get('category') == category]
+            
+            if matches and improved_scores:
+                for match in matches:
+                    cross_ratings = match.get('ratings', {})
+                    
+                    # Calculate agreement for each dimension
+                    for dim in reward_model.dimensions:
+                        if dim in improved_scores and dim in cross_ratings:
+                            self_score = improved_scores[dim]
+                            cross_score = cross_ratings[dim]
+                            
+                            # Consider scores within 0.5 as agreement
+                            agree = abs(self_score - cross_score) <= 0.5
+                            
+                            if dim not in agreement_stats:
+                                agreement_stats[dim] = {'agree': 0, 'total': 0}
+                            
+                            agreement_stats[dim]['total'] += 1
+                            if agree:
+                                agreement_stats[dim]['agree'] += 1
+        
+        if agreement_stats:
+            print("\nAgreement between self and cross-model evaluation:")
+            for dim, stats in agreement_stats.items():
+                if stats['total'] > 0:
+                    agreement_rate = (stats['agree'] / stats['total']) * 100
+                    print(f"  - {dim}: {agreement_rate:.1f}% agreement ({stats['agree']}/{stats['total']})")
+        
+        # Impact of cross-model evaluation on training
+        print("\nImpact of cross-model evaluation on reward model:")
+        for dim in reward_model.dimensions:
+            if dim in training_results and 'feature_importance' in training_results[dim]:
+                # Look for cross-eval related features that had high importance
+                cross_eval_feature = None
+                for feature, importance in training_results[dim]['feature_importance'].items():
+                    if 'cross_eval' in feature.lower() and importance > 0.05:  # Significant importance
+                        cross_eval_feature = (feature, importance)
+                        break
+                
+                if cross_eval_feature:
+                    print(f"  - {dim}: Cross-evaluation data significantly influenced the model")
+                    print(f"    Feature '{cross_eval_feature[0]}' had importance score of {cross_eval_feature[1]:.3f}")
+                else:
+                    print(f"  - {dim}: Cross-evaluation had minimal influence on the model")
 
 if __name__ == "__main__":
     run_demo() 

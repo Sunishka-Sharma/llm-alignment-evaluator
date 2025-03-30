@@ -122,22 +122,45 @@ def create_perspective_chart(df: pd.DataFrame, model_name: str) -> go.Figure:
     return fig
 
 def create_api_usage_chart(request_data: dict, model_name: str) -> go.Figure:
-    """Create an API usage pie chart including cross-model evaluation calls."""
+    """Create an API usage chart."""
     if not request_data or 'requests' not in request_data:
         return None
         
-    requests = pd.DataFrame(request_data['requests'])
-    by_purpose = requests['purpose'].value_counts()
+    requests = pd.DataFrame(request_data.get('requests', []))
+    if requests.empty:
+        return None
+        
+    # Count by purpose
+    by_purpose = {}
     
-    # Ensure cross-evaluation calls are included
-    cross_eval_count = requests['purpose'].str.contains('cross_eval').sum()
+    # Base evaluation
+    main_count = (requests['purpose'] == 'main_response').sum()
+    by_purpose['Base Evaluation'] = main_count
+    
+    # Rewrites
+    rewrite_count = (requests['purpose'] == 'prompt_rewrite').sum()
+    by_purpose['Constitutional Rewrites'] = rewrite_count
+    
+    # Perspective shifts
+    perspective_count = requests['purpose'].str.contains('perspective_shift_', na=False).sum()
+    by_purpose['Perspective Testing'] = perspective_count
+    
+    # Cross evaluation
+    cross_eval_count = (requests['purpose'] == 'cross_eval').sum()
     by_purpose['Cross Evaluation'] = cross_eval_count
     
-    fig = px.pie(
-        values=by_purpose.values,
-        names=by_purpose.index,
-        title=f"{model_name} - Requests by Purpose"
-    )
+    # Create dataframe
+    purpose_df = pd.DataFrame({
+        'Purpose': list(by_purpose.keys()),
+        'Count': list(by_purpose.values())
+    }).sort_values('Count', ascending=False)
+    
+    # Create figure
+    fig = px.bar(purpose_df, x='Purpose', y='Count', 
+                 title=f"{model_name} - API Usage by Purpose",
+                 color='Purpose',
+                 color_discrete_sequence=px.colors.qualitative.Set2)
+    
     return fig
 
 def create_comparison_plot(results: dict, selected_models: list) -> go.Figure:
@@ -249,9 +272,9 @@ def display_request_metrics(results: dict, model: str) -> None:
     # Calculate request metrics
     metrics = {
         'Total Requests': total_requests,
-        'Base Evaluation': len(requests[requests['purpose'] == 'evaluation']),
-        'Rewrites': len(requests[requests['purpose'] == 'rewrite']),
-        'Perspective Tests': len(requests[requests['purpose'] == 'perspective']),
+        'Base Evaluation': len(requests[requests['purpose'] == 'main_response']),
+        'Rewrites': len(requests[requests['purpose'] == 'prompt_rewrite']),
+        'Perspective Tests': len(requests[requests['purpose'].str.contains('perspective_shift_', na=False)]),
         'Cross-Evaluation': len(requests[requests['purpose'] == 'cross_eval'])
     }
     
@@ -420,14 +443,15 @@ def main():
         return
     
     # Analysis tabs
-    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
         "Overall Scores",
         "Model Comparison",
         "Category Analysis",
         "Perspective Analysis",
         "Constitutional Rewrites",
         "API Usage",
-        "Cross-Evaluation"
+        "Cross-Evaluation",
+        "RLHF Demo"
     ])
     
     # Generate all charts once
@@ -549,19 +573,25 @@ def main():
             # Update request purposes to include cross-evaluation
             if not requests.empty:
                 cross_eval_requests = requests[requests['purpose'].str.contains('cross_eval', na=False)]
-                eval_requests = requests[requests['purpose'] == 'evaluation']
+                eval_requests = requests[requests['purpose'] == 'main_response']
+                rewrite_requests = requests[requests['purpose'] == 'prompt_rewrite']
+                perspective_requests = requests[requests['purpose'].str.contains('perspective_shift_', na=False)]
                 
-                col1, col2, col3 = st.columns(3)
+                col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Total Requests", total)
                 with col2:
                     st.metric("Evaluation Requests", len(eval_requests))
                 with col3:
-                    st.metric("Cross-Evaluation Requests", len(cross_eval_requests))
+                    st.metric("Rewrite Requests", len(rewrite_requests))
+                with col4:
+                    st.metric("Perspective Shift Requests", len(perspective_requests))
+                
+                st.metric("Cross-Evaluation Requests", len(cross_eval_requests))
             
             if model_charts[model]['api'] is not None:
                 display_chart(model_charts[model]['api'], st, f"api_{model}_{i}")
-
+    
     with tab7:
         st.header("Cross-Model Evaluation Analysis")
         
@@ -575,6 +605,17 @@ def main():
         
         The scoring ranges from 0 (poor) to 3 (excellent) in both cases, but the cross-evaluation provides an external perspective on the model's performance.
         """)
+        
+        # Check for and display cross-model report if available
+        cross_model_report = os.path.join(results_dir, "analysis", "cross_model_report.md")
+        if os.path.exists(cross_model_report):
+            st.subheader("Comprehensive Cross-Model Report")
+            try:
+                with open(cross_model_report, 'r') as file:
+                    report_content = file.read()
+                st.markdown(report_content)
+            except Exception as e:
+                st.error(f"Error reading cross-model report: {str(e)}")
         
         # Display cross-model evaluation plots
         st.subheader("Model-to-Model Evaluation")
@@ -606,6 +647,89 @@ def main():
                     # Show dimension-wise agreement
                     st.write("Agreement by Dimension:")
                     st.dataframe(agreement_stats['dimension_agreement'])
+
+    with tab8:
+        st.header("RLHF Demo Results")
+        rlhf_demo_dir = os.path.join(results_dir, "rlhf_demo")
+        
+        if not os.path.exists(rlhf_demo_dir):
+            st.info("RLHF demo results not found. Run the demo to generate results:")
+            st.code("python src/demo_rlhf.py")
+            return
+        
+        # Check for dimension improvements plot
+        dim_improvements_path = os.path.join(rlhf_demo_dir, "dimension_improvements.png")
+        if os.path.exists(dim_improvements_path):
+            st.subheader("Dimension Improvements")
+            st.image(dim_improvements_path, use_column_width=True)
+        
+        # Check for strategy effectiveness plot
+        strategy_path = os.path.join(rlhf_demo_dir, "strategy_effectiveness.png")
+        if os.path.exists(strategy_path):
+            st.subheader("Strategy Effectiveness")
+            st.image(strategy_path, use_column_width=True)
+        
+        # Check for self vs cross-evaluation comparison
+        self_vs_cross_path = os.path.join(rlhf_demo_dir, "self_vs_cross_eval.png")
+        if os.path.exists(self_vs_cross_path):
+            st.subheader("Self vs Cross-Model Evaluation")
+            st.image(self_vs_cross_path, use_column_width=True)
+            st.markdown("""
+            This plot compares how the model evaluates itself versus how other models evaluate it across different dimensions.
+            Significant discrepancies may indicate blind spots in self-evaluation or areas where external perspectives provide valuable insights.
+            """)
+        
+        # Check for training history
+        history_path = os.path.join(rlhf_demo_dir, "training_history.json")
+        if os.path.exists(history_path):
+            st.subheader("Training History")
+            try:
+                with open(history_path, 'r') as f:
+                    history = json.load(f)
+                
+                # Display summary statistics
+                stats = history.get("statistics", {})
+                if stats:
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric("Total Responses", stats.get("total_responses", 0))
+                    with col2:
+                        st.metric("Improved Responses", stats.get("improved_responses", 0))
+                    with col3:
+                        st.metric("Avg. Improvement", f"{stats.get('avg_improvement', 0):.2f}")
+                
+                # Show improvement examples
+                examples = history.get("examples", [])
+                if examples:
+                    st.subheader("Improvement Examples")
+                    for i, example in enumerate(examples[:5]):  # Show up to 5 examples
+                        with st.expander(f"Example {i+1}: {example.get('prompt', '')[:50]}..."):
+                            st.markdown("**Prompt:**")
+                            st.write(example.get("prompt", ""))
+                            
+                            col1, col2 = st.columns(2)
+                            with col1:
+                                st.markdown("**Original Response:**")
+                                st.write(example.get("original_response", ""))
+                                st.markdown("**Original Scores:**")
+                                st.json(example.get("original_scores", {}))
+                            
+                            with col2:
+                                st.markdown("**Improved Response:**")
+                                st.write(example.get("improved_response", ""))
+                                st.markdown("**Improved Scores:**")
+                                st.json(example.get("improved_scores", {}))
+                            
+                            st.markdown("**Improvement:**")
+                            improvement = {}
+                            for dim in example.get("original_scores", {}):
+                                original = example.get("original_scores", {}).get(dim, 0)
+                                improved = example.get("improved_scores", {}).get(dim, 0)
+                                improvement[dim] = improved - original
+                            
+                            st.json(improvement)
+            except Exception as e:
+                st.error(f"Error loading training history: {e}")
 
 if __name__ == "__main__":
     main()

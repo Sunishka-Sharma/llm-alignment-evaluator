@@ -15,10 +15,17 @@ spacy>=3.7.2  # For NLP tasks
 language-tool-python>=2.7.1  # For grammar checking
 tqdm>=4.65.0  # For progress bars
 requests>=2.31.0  # For API calls
+watchdog>=2.1.6  # For better Streamlit file watching
+pillow>=9.0.0  # For image processing
+scipy>=1.7.0  # For additional scientific computing
 
 # RLHF specific dependencies
 torch>=2.0.0  # For neural network models
 transformers>=4.30.0  # For language models and tokenizers
 nltk>=3.8.1  # For text processing
 regex>=2023.5.5  # For advanced text pattern matching
+sentencepiece>=0.1.97  # For tokenization models
+datasets>=2.7.0  # For handling RLHF datasets
+evaluate>=0.4.0  # For model evaluation metrics
+accelerate>=0.20.0  # For optimized inference
 en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl  # spaCy English model 

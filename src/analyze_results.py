@@ -108,6 +108,9 @@ class AlignmentAnalyzer:
         """Plot average dimension scores for all models."""
         plt.figure(figsize=(12, 8))
         
+        models = list(self.model_results.keys())
+        x = np.arange(len(self.dimensions))
+        width = 0.8 / (len(models) + 1)  # Adjust width for additional bar
         # Prepare data
         labels = []
         model_scores = {}

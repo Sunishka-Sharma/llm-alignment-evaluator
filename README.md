@@ -19,98 +19,181 @@ This project provides tools to evaluate language models' alignment with human va
 - Perspective shift analysis
 - Comprehensive visualization and reporting
 
-## Initial Testing Results
+## Features
 
-The initial testing phase included:
-- Number of prompts tested: 10
-- Models evaluated: GPT-4 and Claude-3-Opus
-- Test coverage:
-  - Basic alignment scenarios: 4 prompts
-  - Ethical edge cases: 3 prompts
-  - Safety boundaries: 3 prompts
-- Average completion time: ~2 minutes per prompt
+### Core Functionality
+- Multi-dimensional evaluation (helpfulness, harmlessness, ethical judgment)
+- Behavioral consistency testing across contexts
+- Constitutional rewriting with rule-based alignment
+- Perspective-shifting analysis for contextual judgment
+- Interactive dashboard for result visualization
+
+### Constitutional AI & Perspective Analysis
+- **Constitutional Rules**: 
+  - harm_prevention: Prevents harmful instructions
+  - avoid_deception: Filters deceptive content
+  - respect_autonomy: Maintains individual agency
+  - perspective_broadening: Encourages multiple viewpoints
+- **Perspective Testing**:
+  - Default: Base evaluation
+  - Child: Age-appropriate explanations
+  - Expert: Thorough ethical analysis
+  - Vulnerable: Safety-focused guidance
+  - Testing Frequency: Configurable (default: every 5th prompt)
+
+## Interactive Dashboard
+
+### Features
+1. **Overall Scores**: Radar charts, metrics, alignment scores
+2. **Model Comparison**: Side-by-side analysis
+3. **Category Analysis**: Performance breakdown
+4. **Perspective Analysis**: Context-based evaluation
+5. **Constitutional Rewrites**: Rule effectiveness
+6. **API Usage**: Request analytics
+
+### Dashboard Demo
+
+#### Method 1: Direct Video
+![Dashboard Demo](docs/videos/app-run.mov)
+
+#### Method 2: HTML5 Video
+<video width="100%" controls>
+  <source src="docs/videos/app-run.mov" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
+#### Method 3: GitHub Video
+https://github.com/Sunishka-Sharma/llm-alignment-evaluator/blob/main/docs/videos/app-run.mov
+
+#### Method 4: Asset Link
+https://user-images.githubusercontent.com/YOUR_USER_ID/llm-alignment-evaluator/assets/videos/app-run.mov
+
+*Note: This demo shows analysis of initial 10-prompt test set.*
+
+## Quick Start
+
+### Prerequisites
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up API keys
+cp .env.example .env
+# Edit .env with your OpenAI and Anthropic API keys
+
+# Install Watchdog for better Streamlit performance
+xcode-select --install  # On macOS
+pip install watchdog
+```
+
+### Running Experiments
+
+1. **Single Model Evaluation**
+```bash
+# Basic evaluation
+python src/main.py --model gpt-4
+
+# With constitutional rewriting
+python src/main.py --model gpt-4 --rewrite
+
+# With perspective shift testing
+python src/main.py --model gpt-4 --perspective-shift
+```
+
+2. **Complete Experiment Suite**
+```bash
+# Run all experiments
+python src/main.py --run-all
+
+# View results
+streamlit run dashboard/streamlit_app.py
+```
+
+## Project Structure
+```
+llm-alignment-evaluator/
+├── src/                    # Core implementation
+├── prompts/                # Test scenarios
+├── dashboard/             # Visualization
+├── results/               # Evaluation outputs
+├── tests/                # Unit tests
+└── docs/                 # Documentation
+```
+
+## Initial Results
+
+### Test Coverage
+- 10 prompts tested across GPT-4 and Claude-3-Opus
+- Basic alignment (4), ethical edge cases (3), safety boundaries (3)
+- Average completion: ~2 minutes per prompt
 - API usage: ~20-25 requests per model
 
 ### Key Findings
 - Average alignment scores:
   - GPT-4: 2.03/3
   - Claude-3-Opus: 2.11/3
-- Constitutional rewrites triggered: ~30% of prompts
-- Most common rewrite rules:
-  - harm_prevention
-  - perspective_broadening
-- Perspective drift observed: 0.4-0.6 points across dimensions
+- Constitutional rewrites: ~30% of prompts
+- Perspective drift: 0.4-0.6 points
 
-## Interactive Dashboard
+## Future Development
 
-The Streamlit dashboard provides real-time analysis of evaluation results:
-
-### Features
-1. **Overall Scores**
-   - Individual model radar charts
-   - Dimension-specific metrics
-   - Overall alignment scores
-
-2. **Model Comparison**
-   - Side-by-side radar plots
-   - Comparative performance tables
-   - Dimension-wise analysis
-
-3. **Category Analysis**
-   - Performance by prompt category
-   - Bar charts and metrics
-   - Category-specific insights
-
-4. **Perspective Analysis**
-   - Perspective drift visualization
-   - Context-based performance
-   - Stakeholder impact analysis
-
-5. **Constitutional Rewrites**
-   - Rewrite statistics
-   - Rule effectiveness
-   - Before/after examples
-
-6. **API Usage**
-   - Request distribution
-   - Purpose breakdown
-   - Efficiency metrics
-
-### Quick Start
-```bash
-# Launch the dashboard
-streamlit run dashboard/streamlit_app.py
-```
-
-### Sample Dashboard Views
-
-https://github.com/Sunishka-Sharma/llm-alignment-evaluator/blob/main/docs/videos/app-run.mov
-
-*Note: This demo shows analysis of initial 10-prompt test set. Full-scale testing results will be added in future updates.*
-
-## Future Updates
 1. **Large-Scale Testing**
    - 100+ diverse prompts
-   - Additional model comparisons
-   - Extended perspective analysis
+   - Additional models
+   - Extended analysis
 
-2. **Enhanced Visualization**
-   - Time-series analysis
-   - Failure mode clustering
-   - Interactive exploration tools
+2. **Enhanced Features**
+   - Automated scoring
+   - Multi-turn evaluation
+   - Advanced constitutional rules
+   - Batch processing
 
-3. **Advanced Analysis**
-   - Statistical significance testing
-   - Correlation analysis
-   - Pattern recognition
+## Research Foundation
 
-## Features
+Based on key papers:
+- [Constitutional AI: Harmlessness from AI Feedback](https://arxiv.org/abs/2212.08073)
+- [Red Teaming Language Models with Language Models](https://arxiv.org/abs/2209.07858)
+- [Training Language Models to Follow Instructions with Human Feedback](https://arxiv.org/abs/2203.02155)
 
-- Multi-dimensional evaluation (helpfulness, harmlessness, ethical judgment)
-- Behavioral consistency testing across contexts
-- Constitutional rewriting with rule-based alignment
-- Perspective-shifting analysis for contextual judgment
-- Interactive dashboard for result visualization
+## Troubleshooting
+
+### Common Issues
+1. **Missing Results**
+```
+Warning: No results found
+Solution: Run evaluation first using --run-all
+```
+
+2. **API Errors**
+```
+Error: OpenAI/Anthropic API key not found
+Solution: Ensure .env file exists with valid API keys
+```
+
+3. **Dashboard Issues**
+```
+Error: Duplicate plotly chart elements
+Solution: Install watchdog for better performance
+```
+
+## Citation
+
+```bibtex
+@software{llm_alignment_evaluator,
+  title = {LLM Alignment Evaluator},
+  author = {Sunishka Sharma},
+  year = {2024},
+  url = {https://github.com/Sunishka-Sharma/llm-alignment-evaluator}
+}
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
 
 ## Motivation & Alignment Focus
 

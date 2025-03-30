@@ -2,6 +2,8 @@
 
 A comprehensive framework for evaluating and enhancing LLM alignment across multiple dimensions, implementing modern AI safety techniques including Constitutional AI, RLHF, cross-model evaluation, and perspective testing. Built as an intensive one-day sprint challenge to demonstrate rapid implementation of advanced AI alignment research, with flexible modules inspired by Anthropic's real-world safety evaluations.
 
+> **Note:** This project was executed in a rapid prototyping sprint strictly capped by me at 20 hours to explore alignment insights without access to training-level infrastructure. While not based on fine-tuned models or original datasets, it replicates and extends behavioral evaluation pipelines in a modular, low-cost format for broader accessibility.
+
 ---
 
 ## 🎬 Demo Videos & Results
@@ -27,6 +29,7 @@ A comprehensive framework for evaluating and enhancing LLM alignment across mult
 - [Key Innovations](#-key-innovations)
 - [Core Features](#-core-features)
 - [Evaluation Framework](#-evaluation-framework)
+- [Limitations](#-limitations)
 - [Sample Results](#-sample-results)
 - [Customization & Execution](#-customization--execution)
 - [Novel Adaptations vs. Original Research](#-novel-adaptations-vs-original-research)
@@ -49,7 +52,8 @@ This project demonstrates applied research in Language Model alignment, combinin
 - RLHF reward simulation
 - Cross-model auditing and discrepancy analysis
 
-Built in under 24 hours to simulate real-world alignment sprint conditions, it integrates modular experimentation pipelines for targeted LLM behavior analysis.
+
+This sprint project was built in 1 day as part of a portfolio demo for Anthropic-style behavior evaluation. It is not intended as a full-scale benchmark or paper replication, but a flexible tool for auditing and inspecting LLM behavior.
 
 ### Research Foundations
 - [Constitutional AI: Harmlessness from AI Feedback](https://arxiv.org/abs/2212.08073)
@@ -170,6 +174,8 @@ Custom personas and rules are editable in `evaluator.py` and `constitutional_rew
 - RLHF gain: ~0.051 improvement across dimensions
 
 ---
+
+
 
 ## 🧪 Novel Adaptations vs. Original Research
 
@@ -372,7 +378,20 @@ The script generates three categories of visualizations:
 - Check port availability (default: 8501)
 
 ---
+## ⚠️ Limitations
 
+This framework has several important limitations to consider:
+
+- **No Fine-Tuning**: Uses pre-trained models without any parameter updates
+- **Public Models Only**: Limited to commercially available APIs (Claude/GPT)
+- **Simulated RLHF**: Contains reward modeling but no actual reinforcement learning
+- **Small Prompt Set**: Demo uses only 10 prompts (up to 100 planned)
+- **No Multimodal Support**: Text-only evaluation without image or audio capabilities
+- **Limited Persona Range**: Only 4 perspective personas for drift testing
+- **No Training Data Access**: Cannot inspect model weights or training corpora
+- **Synthetic Evaluation**: Programmatic scores without human preference data
+
+---
 ## 🔮 Future Development
 
 - **Expanded Dataset**: Increase to 100+ diverse prompts
@@ -382,6 +401,11 @@ The script generates three categories of visualizations:
 - **Multi-Turn Evaluation**: Extend to conversation-level alignment testing
 - **Customizable Rubrics**: Dynamic scoring criteria definition
 - **Batch Processing**: Parallel evaluation for larger datasets
+
+### Potential Extensions
+- **LMSYS Integration**: Add evaluation on LMSYS Chatbot Arena responses
+- **PEFT Fine-Tuning**: Plug into HuggingFace models with PEFT for small-scale fine-tuning
+- **Multimodal Behavior**: Extend to multimodal LLM behavior (e.g., image captioning)
 
 ---
 

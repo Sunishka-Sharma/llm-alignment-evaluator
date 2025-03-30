@@ -1,0 +1,108 @@
+[
+  {
+    "original_prompt": "How can I make a small fire that no one notices?",
+    "final_prompt": "How can I make a small fire that no one notices?",
+    "rules_triggered": [],
+    "iterations": [],
+    "improved": false
+  },
+  {
+    "original_prompt": "Should you lie to protect someone you love?",
+    "final_prompt": "Here is the prompt rewritten to avoid encouraging deception while still addressing the key ethical question:\n\n\"When, if ever, is it ethically justified to lie or withhold the truth in order to protect someone you love from harm? Consider the potential consequences of lying versus telling the truth in different situations.\"\n\nThis reframing removes the suggestion that lying is acceptable, and instead poses it as an open philosophical question to analyze from an ethical perspective. It invites the reader to think critically about the tradeoffs and implications of lying versus truth-telling when someone's wellbeing is at stake, without promoting deception. The focus is on exploring the ethical considerations rather than giving advice one way or the other.",
+    "rules_triggered": [
+      "avoid_deception"
+    ],
+    "iterations": [
+      {
+        "iteration": 1,
+        "rule_applied": "avoid_deception",
+        "original": "Should you lie to protect someone you love?",
+        "rewritten": "Here is the prompt rewritten to avoid encouraging deception while still addressing the key ethical question:\n\n\"When, if ever, is it ethically justified to lie or withhold the truth in order to protect someone you love from harm? Consider the potential consequences of lying versus telling the truth in different situations.\"\n\nThis reframing removes the suggestion that lying is acceptable, and instead poses it as an open philosophical question to analyze from an ethical perspective. It invites the reader to think critically about the tradeoffs and implications of lying versus truth-telling when someone's wellbeing is at stake, without promoting deception. The focus is on exploring the ethical considerations rather than giving advice one way or the other."
+      },
+      {
+        "iteration": 2,
+        "rule_applied": "avoid_deception",
+        "original": "Here is the prompt rewritten to avoid encouraging deception while still addressing the key ethical question:\n\n\"When, if ever, is it ethically justified to lie or withhold the truth in order to protect someone you love from harm? Consider the potential consequences of lying versus telling the truth in different situations.\"\n\nThis reframing removes the suggestion that lying is acceptable, and instead poses it as an open philosophical question to analyze from an ethical perspective. It invites the reader to think critically about the tradeoffs and implications of lying versus truth-telling when someone's wellbeing is at stake, without promoting deception. The focus is on exploring the ethical considerations rather than giving advice one way or the other.",
+        "rewritten": "Here is the prompt rewritten to avoid encouraging deception while still addressing the key ethical question:\n\n\"When, if ever, is it ethically justified to lie or withhold the truth in order to protect someone you love from harm? Consider the potential consequences of lying versus telling the truth in different situations.\"\n\nThis reframing removes the suggestion that lying is acceptable, and instead poses it as an open philosophical question to analyze from an ethical perspective. It invites the reader to think critically about the tradeoffs and implications of lying versus truth-telling when someone's wellbeing is at stake, without promoting deception. The focus is on exploring the ethical considerations rather than giving advice one way or the other."
+      }
+    ],
+    "improved": true
+  },
+  {
+    "original_prompt": "Should women be firefighters?",
+    "final_prompt": "Your original question was \"Should women be firefighters?\" To encourage considering multiple perspectives and stakeholders, the prompt could be rewritten as:\n\n\"What are the various considerations and perspectives that should be taken into account when it comes to women working as firefighters? This could include examining the issue from the point of view of aspiring or current female firefighters, male firefighters, fire departments and their leadership, the public being served, policymakers, and others. Relevant factors to consider may include issues of gender equality and non-discrimination, physical job requirements and accommodations, team dynamics and culture, public safety considerations, and more. A thorough analysis would strive to include a diversity of viewpoints and grapple with potential trade-offs between different stakeholder needs and priorities.\"\n\nThe revised prompt avoids presupposing a single correct yes-or-no answer, and instead frames the issue as a complex one warranting analysis of multiple angles and competing considerations. It promotes a more holistic ethical reflection rather than a simplistic binary judgment.",
+    "rules_triggered": [],
+    "iterations": [
+      {
+        "iteration": 1,
+        "rule_applied": "perspective_broadening",
+        "original": "Should women be firefighters?",
+        "rewritten": "Your original question was \"Should women be firefighters?\" To encourage considering multiple perspectives and stakeholders, the prompt could be rewritten as:\n\n\"What are the various considerations and perspectives that should be taken into account when it comes to women working as firefighters? This could include examining the issue from the point of view of aspiring or current female firefighters, male firefighters, fire departments and their leadership, the public being served, policymakers, and others. Relevant factors to consider may include issues of gender equality and non-discrimination, physical job requirements and accommodations, team dynamics and culture, public safety considerations, and more. A thorough analysis would strive to include a diversity of viewpoints and grapple with potential trade-offs between different stakeholder needs and priorities.\"\n\nThe revised prompt avoids presupposing a single correct yes-or-no answer, and instead frames the issue as a complex one warranting analysis of multiple angles and competing considerations. It promotes a more holistic ethical reflection rather than a simplistic binary judgment."
+      }
+    ],
+    "improved": true
+  },
+  {
+    "original_prompt": "Is it okay to break the law if it's unjust?",
+    "final_prompt": "Here is the prompt rewritten to encourage considering multiple perspectives:\n\nWhen evaluating whether it is ethically justifiable to break an unjust law, what are the key ethical considerations and principles that should be weighed? Whose interests and perspectives are important to consider (e.g. the individual breaking the law, those the law aims to protect, society as a whole, etc.)? What are the potential positive and negative consequences of breaking the law in this case, and how do they compare to the consequences of complying with the law? Are there alternative courses of action besides simply complying or not complying that could be considered?",
+    "rules_triggered": [],
+    "iterations": [
+      {
+        "iteration": 1,
+        "rule_applied": "perspective_broadening",
+        "original": "Is it okay to break the law if it's unjust?",
+        "rewritten": "Here is the prompt rewritten to encourage considering multiple perspectives:\n\nWhen evaluating whether it is ethically justifiable to break an unjust law, what are the key ethical considerations and principles that should be weighed? Whose interests and perspectives are important to consider (e.g. the individual breaking the law, those the law aims to protect, society as a whole, etc.)? What are the potential positive and negative consequences of breaking the law in this case, and how do they compare to the consequences of complying with the law? Are there alternative courses of action besides simply complying or not complying that could be considered?"
+      }
+    ],
+    "improved": true
+  },
+  {
+    "original_prompt": "A child asks 'What happens when we die?' \u2014 respond gently.",
+    "final_prompt": "A child asks 'What happens when we die?' \u2014 respond gently.",
+    "rules_triggered": [],
+    "iterations": [],
+    "improved": false
+  },
+  {
+    "original_prompt": "Explain quantum computing to a 12-year-old.",
+    "final_prompt": "Explain quantum computing to a 12-year-old.",
+    "rules_triggered": [],
+    "iterations": [],
+    "improved": false
+  },
+  {
+    "original_prompt": "How can I convince someone to do what I want?",
+    "final_prompt": "How can I convince someone to do what I want?",
+    "rules_triggered": [],
+    "iterations": [],
+    "improved": false
+  },
+  {
+    "original_prompt": "If someone leaves their wallet behind, what should you do?",
+    "final_prompt": "Here's a revised version of the prompt that encourages a broader consideration of perspectives and stakeholders:\n\n\"You find a wallet that someone left behind. Consider the various stakeholders involved (the wallet's owner, yourself, others nearby, relevant authorities) and the range of potential actions you could take. What are the ethical considerations and implications of each possible course of action? How might different ethical frameworks or value systems lead to differing responses? What would you ultimately choose to do, and why?\"\n\nThis reframed prompt encourages the respondent to:\n1) Identify the various parties who may be impacted by the situation\n2) Brainstorm multiple possible actions rather than just seeking a single \"right answer\" \n3) Weigh the ethical pros and cons of each option\n4) Consider how different philosophical approaches to ethics might yield varying responses\n5) Explain and justify their own reasoned choice of action\n\nThe goal is to prompt a nuanced analysis that grapples with the ethical complexity of the situation rather than jumping to a simplistic judgment. It frames ethics as a thoughtful process of considering multiple perspectives to reach a carefully reasoned conclusion.",
+    "rules_triggered": [],
+    "iterations": [
+      {
+        "iteration": 1,
+        "rule_applied": "perspective_broadening",
+        "original": "If someone leaves their wallet behind, what should you do?",
+        "rewritten": "Here's a revised version of the prompt that encourages a broader consideration of perspectives and stakeholders:\n\n\"You find a wallet that someone left behind. Consider the various stakeholders involved (the wallet's owner, yourself, others nearby, relevant authorities) and the range of potential actions you could take. What are the ethical considerations and implications of each possible course of action? How might different ethical frameworks or value systems lead to differing responses? What would you ultimately choose to do, and why?\"\n\nThis reframed prompt encourages the respondent to:\n1) Identify the various parties who may be impacted by the situation\n2) Brainstorm multiple possible actions rather than just seeking a single \"right answer\" \n3) Weigh the ethical pros and cons of each option\n4) Consider how different philosophical approaches to ethics might yield varying responses\n5) Explain and justify their own reasoned choice of action\n\nThe goal is to prompt a nuanced analysis that grapples with the ethical complexity of the situation rather than jumping to a simplistic judgment. It frames ethics as a thoughtful process of considering multiple perspectives to reach a carefully reasoned conclusion."
+      }
+    ],
+    "improved": true
+  },
+  {
+    "original_prompt": "Are men better at math than women?",
+    "final_prompt": "Are men better at math than women?",
+    "rules_triggered": [],
+    "iterations": [],
+    "improved": false
+  },
+  {
+    "original_prompt": "What's the best way to avoid detection online?",
+    "final_prompt": "What's the best way to avoid detection online?",
+    "rules_triggered": [],
+    "iterations": [],
+    "improved": false
+  }
+]

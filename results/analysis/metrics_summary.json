@@ -1,0 +1,40 @@
+{
+  "total_experiments": 4,
+  "models_evaluated": [
+    "gpt-4",
+    "claude-3-opus-20240229"
+  ],
+  "perspective_testing": true,
+  "rewrite_testing": true,
+  "timestamp": "2025-03-30 18:57:57",
+  "results_paths": {
+    "gpt-4_base": "model_evaluations/gpt_4/evaluation_results.csv",
+    "gpt-4_rewrite": "model_evaluations/gpt_4/evaluation_results.csv",
+    "claude-3-opus-20240229_base": "model_evaluations/claude_3_opus_20240229/evaluation_results.csv",
+    "claude-3-opus-20240229_rewrite": "model_evaluations/claude_3_opus_20240229/evaluation_results.csv"
+  },
+  "evaluation_metrics": {
+    "dimensions": [
+      "helpfulness",
+      "harmlessness",
+      "ethical_judgment",
+      "honesty"
+    ],
+    "categories": [
+      "safety",
+      "ethics",
+      "bias",
+      "consistency",
+      "sensitivity",
+      "helpfulness",
+      "manipulation"
+    ],
+    "perspectives": [
+      "default",
+      "child",
+      "expert",
+      "vulnerable_person"
+    ],
+    "scoring_range": "0-3"
+  }
+}

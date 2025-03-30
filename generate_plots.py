@@ -682,17 +682,122 @@ def generate_perspective_plot(analyzer, model, save_path=None):
     else:
         plt.show()
 
-def run_rlhf_demo():
-    """Run the RLHF demo to generate all RLHF-related plots."""
-    print("Running RLHF demo...")
+def run_rlhf_demo(output_dir=None):
+    """Run the RLHF demo to generate visualizations."""
     try:
-        # Import and run the demo
         from src.demo_rlhf import run_demo
+        
+        # Create output directory if it doesn't exist
+        if output_dir is None:
+            output_dir = "results/rlhf_demo"
+        
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Run the demo with enhanced visualization output
+        print("Running RLHF demo with sample prompts...")
         run_demo()
-        print("RLHF demo completed successfully!")
+        
+        # Check if the plots were generated
+        dimension_plot = os.path.join(output_dir, "dimension_improvements.png")
+        example_plot = os.path.join(output_dir, "example_improvement.png")
+        
+        if os.path.exists(dimension_plot):
+            print(f"✓ Generated dimension improvements plot: {dimension_plot}")
+        else:
+            print("⨯ Failed to generate dimension improvements plot")
+            
+        if os.path.exists(example_plot):
+            print(f"✓ Generated example improvement showcase: {example_plot}")
+        else:
+            print("⨯ Failed to generate example improvement showcase")
+        
+        # Copy training history to results for reference
+        training_history = os.path.join(output_dir, "training_history.json")
+        if os.path.exists(training_history):
+            print(f"✓ Generated RLHF training history: {training_history}")
+            
+            # Create a human-readable summary from the training history
+            try:
+                with open(training_history, 'r') as f:
+                    history = json.load(f)
+                
+                # Generate a summary markdown file
+                summary_path = os.path.join(output_dir, "rlhf_summary.md")
+                with open(summary_path, 'w') as f:
+                    f.write("# RLHF Improvement Summary\n\n")
+                    f.write(f"## Overview\n\n")
+                    f.write(f"Total examples processed: {len(history)}\n\n")
+                    
+                    # Count improvements by category
+                    categories = {}
+                    dimensions_improved = {}
+                    strategies_used = {}
+                    
+                    for entry in history:
+                        # Track categories
+                        category = entry.get('category', 'unknown')
+                        if category not in categories:
+                            categories[category] = {'count': 0, 'improved': 0}
+                        categories[category]['count'] += 1
+                        
+                        # Check if improved
+                        orig_scores = entry.get('original_scores', {})
+                        impr_scores = entry.get('improved_scores', {})
+                        
+                        improved = False
+                        for dim in orig_scores:
+                            if dim in impr_scores:
+                                change = impr_scores[dim] - orig_scores[dim]
+                                
+                                # Track dimension improvements
+                                if dim not in dimensions_improved:
+                                    dimensions_improved[dim] = []
+                                dimensions_improved[dim].append(change)
+                                
+                                if change > 0:
+                                    improved = True
+                        
+                        if improved:
+                            categories[category]['improved'] += 1
+                        
+                        # Track strategies
+                        for strategy in entry.get('improvements_applied', []):
+                            if strategy not in strategies_used:
+                                strategies_used[strategy] = 0
+                            strategies_used[strategy] += 1
+                    
+                    # Write category summary
+                    f.write("## Categories\n\n")
+                    f.write("| Category | Processed | Improved | Rate |\n")
+                    f.write("|----------|-----------|----------|------|\n")
+                    for cat, stats in categories.items():
+                        rate = (stats['improved'] / stats['count']) * 100 if stats['count'] > 0 else 0
+                        f.write(f"| {cat} | {stats['count']} | {stats['improved']} | {rate:.1f}% |\n")
+                    
+                    f.write("\n## Dimension Improvements\n\n")
+                    f.write("| Dimension | Avg Change | Max Improvement |\n")
+                    f.write("|-----------|------------|----------------|\n")
+                    for dim, changes in dimensions_improved.items():
+                        avg = sum(changes) / len(changes)
+                        max_impr = max(changes)
+                        f.write(f"| {dim} | {avg:.3f} | {max_impr:.3f} |\n")
+                    
+                    f.write("\n## Strategies Used\n\n")
+                    strategies_sorted = sorted(strategies_used.items(), key=lambda x: x[1], reverse=True)
+                    for strategy, count in strategies_sorted:
+                        readable = strategy.replace('_', ' ').title()
+                        f.write(f"- {readable}: {count} times\n")
+                
+                print(f"✓ Generated human-readable RLHF summary: {summary_path}")
+            except Exception as e:
+                print(f"Error generating RLHF summary: {e}")
+        
         return True
+    except ImportError:
+        print("Could not import RLHF demo. Make sure src/demo_rlhf.py exists.")
+        return False
     except Exception as e:
-        print(f"Error running RLHF demo: {str(e)}")
+        print(f"Error running RLHF demo: {e}")
         return False
 
 def main():

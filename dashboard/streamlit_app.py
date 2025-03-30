@@ -21,19 +21,27 @@ st.set_page_config(
 def load_results(results_dir: str) -> dict:
     """Load results for all evaluated models."""
     results = {}
-    results_path = Path(results_dir)
+    results_path = Path(results_dir) / "model_evaluations"
     
     if not results_path.exists():
         return {}
     
     for model_dir in results_path.glob("*"):
         if model_dir.is_dir():
+            model_name = model_dir.name
             eval_file = model_dir / "evaluation_results.csv"
+            rewrite_file = model_dir / "rewrite_history.json"
+            request_file = model_dir / "request_log.json"
+            
             if eval_file.exists():
-                results[model_dir.name] = {
+                results[model_name] = {
                     'eval': pd.read_csv(eval_file),
-                    'rewrite': load_json(model_dir / "rewrite_history.json"),
-                    'requests': load_json(model_dir / "request_log.json")
+                    'rewrite': load_json(rewrite_file),
+                    'requests': load_json(request_file),
+                    'plots': {
+                        'dimension_scores': str(Path(results_dir) / "plots" / "model_specific" / model_name / "dimension_scores.png"),
+                        'comparison': str(Path(results_dir) / "plots" / "comparison" / "dimension_scores_comparison.png")
+                    }
                 }
     
     return results
@@ -148,8 +156,7 @@ def main():
     
     if not results:
         st.warning("⚠️ No results found! Please run evaluation first:")
-        st.code("python src/main.py --model gpt-4")
-        st.code("python src/main.py --model claude-3-opus-20240229")
+        st.code("python src/main.py --run-all")
         return
     
     # Model selection
@@ -164,13 +171,11 @@ def main():
         st.warning("Please select at least one model to analyze.")
         return
     
-    # Create plots directory if it doesn't exist
-    os.makedirs('results/plots', exist_ok=True)
-    
     # Analysis tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "Overall Scores",
         "Category Analysis",
+        "Perspective Analysis",
         "Prompt Rewrites",
         "API Usage",
         "Raw Data"
@@ -178,46 +183,30 @@ def main():
     
     with tab1:
         st.header("Overall Alignment Scores")
-        cols = st.columns(len(selected_models))
         
+        # Show comparison plot
+        comparison_plot = Path(results[available_models[0]]['plots']['comparison'])
+        if comparison_plot.exists():
+            st.image(str(comparison_plot), caption="Model Comparison")
+        
+        # Show individual model scores
+        cols = st.columns(len(selected_models))
         for i, model in enumerate(selected_models):
             with cols[i]:
                 df = results[model]['eval']
                 score_cols = [col for col in df.columns if col.startswith('scores.')]
                 overall_score = df[score_cols].mean().mean()
                 
-                # Radar chart
-                categories = [col.replace('scores.', '') for col in score_cols]
-                scores = df[score_cols].mean().values.tolist()
+                st.metric(f"{model} Overall Score", f"{overall_score:.2f}/3")
                 
-                fig = go.Figure()
-                fig.add_trace(go.Scatterpolar(
-                    r=scores + [scores[0]],
-                    theta=categories + [categories[0]],
-                    fill='toself',
-                    name=model
-                ))
-                
-                fig.update_layout(
-                    polar=dict(
-                        radialaxis=dict(
-                            visible=True,
-                            range=[0, 3]
-                        )),
-                    showlegend=True,
-                    title=f"{model} Alignment Dimensions"
-                )
-                
-                # Save radar plot
-                fig.write_image(f"results/plots/{model}_radar.png")
-                
-                st.plotly_chart(fig, use_container_width=True, key=f"radar_{model}")
-                st.metric("Overall Score", f"{overall_score:.2f}/3")
+                # Show dimension scores plot
+                dimension_plot = Path(results[model]['plots']['dimension_scores'])
+                if dimension_plot.exists():
+                    st.image(str(dimension_plot), caption=f"{model} Dimensions")
     
     with tab2:
         st.header("Performance by Category")
-        
-        for i, model in enumerate(selected_models):
+        for model in selected_models:
             st.subheader(model)
             df = results[model]['eval']
             
@@ -225,7 +214,7 @@ def main():
             score_cols = [col for col in df.columns if col.startswith('scores.')]
             cat_scores = df.groupby('category')[score_cols].mean()
             
-            # Plot
+            # Create bar chart
             fig = px.bar(
                 cat_scores.mean(axis=1).reset_index(),
                 x='category',
@@ -233,76 +222,89 @@ def main():
                 title=f"{model} - Scores by Category",
                 labels={'0': 'Score', 'category': 'Category'}
             )
-            
-            # Save category plot
-            fig.write_image(f"results/plots/{model}_category_scores.png")
-            
-            st.plotly_chart(fig, use_container_width=True, key=f"cat_{model}")
+            st.plotly_chart(fig, use_container_width=True)
     
     with tab3:
+        st.header("Perspective Analysis")
+        for model in selected_models:
+            st.subheader(model)
+            df = results[model]['eval']
+            
+            if 'perspective' in df.columns:
+                perspectives = df['perspective'].unique()
+                score_cols = [col for col in df.columns if col.startswith('scores.')]
+                
+                # Create radar chart for perspectives
+                fig = go.Figure()
+                for perspective in perspectives:
+                    persp_scores = df[df['perspective'] == perspective][score_cols].mean()
+                    fig.add_trace(go.Scatterpolar(
+                        r=persp_scores.values,
+                        theta=[col.replace('scores.', '') for col in score_cols],
+                        fill='toself',
+                        name=perspective
+                    ))
+                
+                fig.update_layout(
+                    polar=dict(radialaxis=dict(range=[0, 3])),
+                    showlegend=True,
+                    title=f"{model} - Perspective Analysis"
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No perspective analysis data available.")
+    
+    with tab4:
         st.header("Prompt Rewrite Analysis")
-        
-        for i, model in enumerate(selected_models):
+        for model in selected_models:
             st.subheader(model)
             rewrite_data = results[model].get('rewrite', {})
             
-            if not rewrite_data:
-                st.info("No rewrite data available. Run evaluation with --rewrite flag.")
-                continue
-            
-            # Show rewrite stats
-            rewrites = pd.DataFrame(rewrite_data)
-            st.metric("Total Rewrites", len(rewrites))
-            
-            if not rewrites.empty:
-                st.write("Sample Rewrites:")
-                for _, row in rewrites.iterrows():
-                    with st.expander(f"Rewrite due to: {', '.join(row['rules_triggered'])}"):
-                        st.text("Original:")
-                        st.code(row['original_prompt'])
-                        st.text("Rewritten:")
-                        st.code(row['final_prompt'])
+            if rewrite_data:
+                total_rewrites = len([r for r in rewrite_data if r.get("improved", False)])
+                st.metric("Total Rewrites", total_rewrites)
+                
+                # Show rewrite examples
+                for i, rewrite in enumerate(rewrite_data):
+                    if rewrite.get("improved", False):
+                        with st.expander(f"Rewrite {i+1}: {', '.join(rewrite['rules_triggered'])}"):
+                            st.text("Original:")
+                            st.code(rewrite['original_prompt'])
+                            st.text("Rewritten:")
+                            st.code(rewrite['final_prompt'])
+            else:
+                st.info("No rewrite data available. Run with --rewrite flag to enable.")
     
-    with tab4:
+    with tab5:
         st.header("API Usage Analysis")
-        
-        for i, model in enumerate(selected_models):
+        for model in selected_models:
             st.subheader(model)
             request_data = results[model].get('requests', {})
             
-            if not request_data:
-                st.info("No request log available.")
-                continue
-            
-            # Show request stats
-            requests = pd.DataFrame(request_data.get('requests', []))
-            total = request_data.get('total_requests', 0)
-            
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Total Requests", total)
-            
-            if not requests.empty:
-                with col2:
-                    by_purpose = requests['purpose'].value_counts()
-                    st.metric("Unique Purposes", len(by_purpose))
+            if request_data:
+                total = request_data.get('total_requests', 0)
+                st.metric("Total API Calls", total)
                 
-                # Plot requests by purpose
-                fig = px.pie(
-                    values=by_purpose.values,
-                    names=by_purpose.index,
-                    title="Requests by Purpose"
-                )
-                
-                # Save API usage plot
-                fig.write_image(f"results/plots/{model}_api_usage.png")
-                
-                st.plotly_chart(fig, use_container_width=True, key=f"api_{model}")
+                # Analyze request purposes
+                if 'requests' in request_data:
+                    purposes = {}
+                    for req in request_data['requests']:
+                        purpose = req.get('purpose', 'unknown')
+                        purposes[purpose] = purposes.get(purpose, 0) + 1
+                    
+                    # Create pie chart
+                    fig = px.pie(
+                        values=list(purposes.values()),
+                        names=list(purposes.keys()),
+                        title="API Calls by Purpose"
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No API usage data available.")
     
-    with tab5:
+    with tab6:
         st.header("Raw Data")
-        
-        for i, model in enumerate(selected_models):
+        for model in selected_models:
             with st.expander(f"Show {model} Data"):
                 st.dataframe(results[model]['eval'])
 

@@ -71,7 +71,7 @@ def evaluate_model(
     output_dir: str,
     rewrite: bool = False,
     perspective_shift: bool = False,
-    perspective_test_frequency: int = 5  # New parameter for configurable frequency
+    perspective_test_frequency: int = 5
 ) -> str:
     """
     Evaluate a single model and return results path.
@@ -86,7 +86,7 @@ def evaluate_model(
     """
     
     # Create model-specific output directory
-    model_dir = os.path.join(output_dir, model_name.replace("-", "_"))
+    model_dir = os.path.join(output_dir, "model_evaluations", model_name.replace("-", "_"))
     os.makedirs(model_dir, exist_ok=True)
     
     # Initialize evaluator and rewriter
@@ -108,7 +108,7 @@ def evaluate_model(
         if rewriter:
             rewrite_result = rewriter.rewrite_prompt(
                 prompt,
-                lambda p: get_model_response(p, model_name)  # Use same model for rewriting
+                lambda p: get_model_response(p, model_name)
             )
             request_log.append({
                 "purpose": "prompt_rewrite",
@@ -172,6 +172,13 @@ def evaluate_model(
     
     logging.info(f"\nTotal API requests made: {len(request_log)}")
     
+    # Generate individual model analysis and plots
+    analyzer = AlignmentAnalyzer()
+    analyzer.add_model_results(results_path)
+    plots_dir = os.path.join(output_dir, "plots", "model_specific", model_name.replace("-", "_"))
+    os.makedirs(plots_dir, exist_ok=True)
+    analyzer.plot_dimension_scores(save_path=os.path.join(plots_dir, "dimension_scores.png"))
+    
     return results_path
 
 def run_all_experiments(prompts_file: str = "prompts/eval_prompts.csv", output_dir: str = "results"):
@@ -179,10 +186,8 @@ def run_all_experiments(prompts_file: str = "prompts/eval_prompts.csv", output_d
     models = ["gpt-4", "claude-3-opus-20240229"]
     results = {}
     
-    # Create output directories
-    os.makedirs(output_dir, exist_ok=True)
-    plots_dir = os.path.join(output_dir, "plots")
-    os.makedirs(plots_dir, exist_ok=True)
+    # Create directory structure
+    create_directory_structure(output_dir)
     
     # Load prompts
     evaluator = AlignmentEvaluator()
@@ -206,13 +211,31 @@ def run_all_experiments(prompts_file: str = "prompts/eval_prompts.csv", output_d
         )
     
     # Generate comprehensive report with plots
-    report_file = os.path.join(output_dir, "comprehensive_analysis.md")
+    report_file = os.path.join(output_dir, "analysis", "comprehensive_report.md")
+    metrics_file = os.path.join(output_dir, "analysis", "metrics_summary.json")
+    
+    # Generate and save the comprehensive report
     generate_comprehensive_report(results, report_file)
+    
+    # Save metrics summary
+    metrics = {
+        "total_experiments": len(results),
+        "models_evaluated": models,
+        "perspective_testing": True,
+        "rewrite_testing": True,
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "results_paths": {k: os.path.relpath(v, output_dir) for k, v in results.items()}
+    }
+    
+    os.makedirs(os.path.dirname(metrics_file), exist_ok=True)
+    with open(metrics_file, 'w') as f:
+        json.dump(metrics, f, indent=2)
     
     logging.info("\nAll experiments complete! Results available at:")
     logging.info(f"1. Comprehensive analysis: {report_file}")
-    logging.info(f"2. Plots: {plots_dir}")
-    logging.info("3. Interactive dashboard: streamlit run dashboard/streamlit_app.py")
+    logging.info(f"2. Model evaluations: {os.path.join(output_dir, 'model_evaluations')}")
+    logging.info(f"3. Plots: {os.path.join(output_dir, 'plots')}")
+    logging.info("4. Interactive dashboard: streamlit run dashboard/streamlit_app.py")
     
     return results
 
@@ -266,8 +289,8 @@ def generate_comprehensive_report(results_paths: dict, output_file: str = "resul
     report.append("\n## Constitutional Rewriting Impact")
     for model in ["gpt-4", "claude-3-opus-20240229"]:
         report.append(f"\n### {model}")
-        base_path = os.path.join(output_dir, f"{model.replace('-', '_')}")
-        rewrite_file = os.path.join(base_path, "rewrite_history.json")
+        model_dir = os.path.join(os.path.dirname(output_file), "..", "model_evaluations", model.replace("-", "_"))
+        rewrite_file = os.path.join(model_dir, "rewrite_history.json")
         
         if os.path.exists(rewrite_file):
             with open(rewrite_file) as f:
@@ -312,6 +335,35 @@ def generate_comprehensive_report(results_paths: dict, output_file: str = "resul
         f.write('\n'.join(report))
     
     logging.info(f"Comprehensive analysis saved to {output_file}")
+    
+    # Generate and save plots in comparison folder
+    plots_dir = os.path.join(os.path.dirname(output_file), "..", "plots", "comparison")
+    os.makedirs(plots_dir, exist_ok=True)
+    analyzer.plot_dimension_scores(save_path=os.path.join(plots_dir, "dimension_scores_comparison.png"))
+    
+    return output_file
+
+def create_directory_structure(base_dir: str = "results") -> None:
+    """Create the complete directory structure for results."""
+    # Create main directories
+    os.makedirs(base_dir, exist_ok=True)
+    
+    # Create subdirectories for model evaluations
+    model_eval_dir = os.path.join(base_dir, "model_evaluations")
+    os.makedirs(model_eval_dir, exist_ok=True)
+    os.makedirs(os.path.join(model_eval_dir, "gpt_4"), exist_ok=True)
+    os.makedirs(os.path.join(model_eval_dir, "claude_3_opus_20240229"), exist_ok=True)
+    
+    # Create plots directory structure under results
+    plots_dir = os.path.join(base_dir, "plots")
+    os.makedirs(os.path.join(plots_dir, "comparison"), exist_ok=True)
+    os.makedirs(os.path.join(plots_dir, "model_specific", "gpt_4"), exist_ok=True)
+    os.makedirs(os.path.join(plots_dir, "model_specific", "claude_3_opus_20240229"), exist_ok=True)
+    
+    # Create analysis directory
+    os.makedirs(os.path.join(base_dir, "analysis"), exist_ok=True)
+    
+    logging.info(f"Created directory structure in {base_dir}")
 
 def main():
     parser = argparse.ArgumentParser(description="LLM Alignment Evaluator")
@@ -324,6 +376,9 @@ def main():
     parser.add_argument("--run-all", action="store_true", help="Run all experiments (both models, with/without rewrite)")
     
     args = parser.parse_args()
+    
+    # Create directory structure at startup
+    create_directory_structure(args.output_dir)
     
     if args.run_all:
         results = run_all_experiments(args.prompts, args.output_dir)

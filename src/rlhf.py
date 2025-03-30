@@ -224,26 +224,60 @@ class RLHFTrainer:
         addition = "\n\nTo elaborate further:\n1. Key principles:\n   - Point 1\n   - Point 2\n2. Important considerations:\n   - Factor 1\n   - Factor 2\n3. Practical implications:\n   - Impact 1\n   - Impact 2"
         return response + addition
     
-    def improve_response(self, original_response: str, 
+    def improve_response(self, original_response: str, prompt: str = "", category: str = "",
                         max_attempts: int = 5,
-                        min_improvement: float = 0.1) -> Tuple[str, float]:
+                        min_improvement: float = 0.1) -> Tuple[str, Dict]:
         """
         Improve response using multiple strategies and reward prediction.
+        
+        Args:
+            original_response: The original model response
+            prompt: The original prompt
+            category: The category of the prompt
+            max_attempts: Maximum improvement attempts
+            min_improvement: Minimum improvement threshold
+            
+        Returns:
+            Tuple of (improved response, reward scores dict)
         """
         # Handle empty response
         if not original_response:
             best_response = "I understand you're looking for assistance. Let me help you with a clear and helpful response that addresses your needs effectively."
-            return best_response, self.reward_model.predict_reward(best_response)
+            if hasattr(self.reward_model, 'predict_rewards'):
+                return best_response, self.reward_model.predict_rewards(best_response, prompt, category)
+            else:
+                return best_response, {"overall": self.reward_model.predict_reward(best_response)}
+            
+        # Get baseline scores
+        if hasattr(self.reward_model, 'predict_rewards'):
+            # For multidimensional model
+            original_scores = self.reward_model.predict_rewards(original_response, prompt, category)
+            best_scores = original_scores.copy()
+            best_overall = sum(best_scores.values()) / len(best_scores) if best_scores else 0
+        else:
+            # For single-dimensional model
+            original_scores = {"overall": self.reward_model.predict_reward(original_response)}
+            best_scores = original_scores.copy()
+            best_overall = best_scores["overall"]
             
         best_response = original_response
-        best_reward = self.reward_model.predict_reward(original_response)
-        
         improvements_tried = []
         
         # For very long responses, first try to improve clarity
         if len(original_response) > 1000:
-            best_response = self._improve_clarity(original_response)
-            best_reward = self.reward_model.predict_reward(best_response)
+            improved_response = self._improve_clarity(original_response)
+            
+            if hasattr(self.reward_model, 'predict_rewards'):
+                improved_scores = self.reward_model.predict_rewards(improved_response, prompt, category)
+                improved_overall = sum(improved_scores.values()) / len(improved_scores)
+            else:
+                improved_scores = {"overall": self.reward_model.predict_reward(improved_response)}
+                improved_overall = improved_scores["overall"]
+                
+            if improved_overall > best_overall:
+                best_response = improved_response
+                best_scores = improved_scores
+                best_overall = improved_overall
         
         for _ in range(max_attempts):
             # Try each improvement strategy
@@ -253,35 +287,337 @@ class RLHFTrainer:
                 if strategy.__name__ not in improvements_tried
             ]
             
+            # Skip if no new strategies to try
+            if not candidates:
+                break
+                
             # Evaluate candidates
-            rewards = [self.reward_model.predict_reward(c) for c in candidates]
+            if hasattr(self.reward_model, 'predict_rewards'):
+                # For multidimensional model
+                candidate_scores = [self.reward_model.predict_rewards(c, prompt, category) for c in candidates]
+                candidate_overalls = [sum(s.values()) / len(s) for s in candidate_scores]
+            else:
+                # For single-dimensional model  
+                candidate_overalls = [self.reward_model.predict_reward(c) for c in candidates]
+                candidate_scores = [{"overall": score} for score in candidate_overalls]
             
             # Find best improvement
-            if rewards:
-                max_reward_idx = np.argmax(rewards)
-                if rewards[max_reward_idx] > best_reward + min_improvement:
+            if candidate_overalls:
+                max_reward_idx = np.argmax(candidate_overalls)
+                if candidate_overalls[max_reward_idx] > best_overall + min_improvement:
                     best_response = candidates[max_reward_idx]
-                    best_reward = rewards[max_reward_idx]
+                    best_scores = candidate_scores[max_reward_idx]
+                    best_overall = candidate_overalls[max_reward_idx]
                     improvements_tried.append(
                         self.improvement_strategies[max_reward_idx].__name__
                     )
                 else:
                     # If no improvement found, force at least one addition for long responses
-                    if len(best_response) >= len(original_response) and len(improvements_tried) == 0:
+                    if len(best_response) >= len(original_response) and not improvements_tried:
                         best_response = best_response + "\n\nAdditional insights and considerations: ..."
+                        if hasattr(self.reward_model, 'predict_rewards'):
+                            best_scores = self.reward_model.predict_rewards(best_response, prompt, category)
+                        else:
+                            best_scores = {"overall": self.reward_model.predict_reward(best_response)}
                     break
             else:
                 break
         
         # Record improvement history
         self.training_history.append({
+            "prompt": prompt,
+            "category": category,
             "original_response": original_response,
-            "final_response": best_response,
-            "reward_improvement": best_reward - self.reward_model.predict_reward(original_response),
+            "improved_response": best_response,
+            "original_scores": original_scores,
+            "improved_scores": best_scores,
             "improvements_applied": improvements_tried
         })
         
-        return best_response, best_reward
+        return best_response, best_scores
+        
+    def analyze_improvements(self) -> Dict:
+        """
+        Analyze the improvements made by the trainer.
+        
+        Returns:
+            Dictionary containing improvement statistics
+        """
+        if not self.training_history:
+            return {"error": "No training history available"}
+            
+        total_responses = len(self.training_history)
+        
+        # Calculate overall stats
+        improved_responses = 0
+        total_improvement = 0
+        
+        # For multidimensional analysis
+        dimension_improvements = {}
+        
+        # Analyze strategy effectiveness
+        strategy_effectiveness = {}
+        
+        for entry in self.training_history:
+            original_scores = entry["original_scores"]
+            improved_scores = entry["improved_scores"]
+            
+            # Calculate improvement for each dimension
+            if "overall" in original_scores:
+                # Single dimension case
+                improvement = improved_scores["overall"] - original_scores["overall"]
+                if improvement > 0:
+                    improved_responses += 1
+                    total_improvement += improvement
+            else:
+                # Multi-dimension case
+                dimensions = set(original_scores.keys()) & set(improved_scores.keys())
+                
+                any_improvement = False
+                for dim in dimensions:
+                    dim_improvement = improved_scores[dim] - original_scores[dim]
+                    
+                    if dim not in dimension_improvements:
+                        dimension_improvements[dim] = []
+                    
+                    dimension_improvements[dim].append(dim_improvement)
+                    
+                    if dim_improvement > 0:
+                        any_improvement = True
+                
+                if any_improvement:
+                    improved_responses += 1
+                    
+                avg_improvement = sum(improved_scores[d] - original_scores[d] 
+                                     for d in dimensions) / len(dimensions)
+                total_improvement += avg_improvement
+            
+            # Analyze strategy effectiveness
+            for strategy in entry.get("improvements_applied", []):
+                if strategy not in strategy_effectiveness:
+                    strategy_effectiveness[strategy] = []
+                
+                if "overall" in improved_scores:
+                    strategy_effectiveness[strategy].append(
+                        improved_scores["overall"] - original_scores["overall"]
+                    )
+                else:
+                    dimensions = set(original_scores.keys()) & set(improved_scores.keys())
+                    if dimensions:
+                        avg_improvement = sum(improved_scores[d] - original_scores[d] 
+                                            for d in dimensions) / len(dimensions)
+                        strategy_effectiveness[strategy].append(avg_improvement)
+        
+        # Calculate averages
+        improvement_rate = improved_responses / total_responses if total_responses > 0 else 0
+        avg_improvement = total_improvement / total_responses if total_responses > 0 else 0
+        
+        # Compute average dimension improvements
+        avg_dimension_improvements = {}
+        for dim, improvements in dimension_improvements.items():
+            avg_dimension_improvements[dim] = sum(improvements) / len(improvements) if improvements else 0
+        
+        # Compute strategy effectiveness
+        avg_strategy_effectiveness = []
+        for strategy, improvements in strategy_effectiveness.items():
+            if improvements:
+                avg_gain = sum(improvements) / len(improvements)
+                avg_strategy_effectiveness.append((strategy, avg_gain))
+        
+        # Sort by effectiveness
+        avg_strategy_effectiveness.sort(key=lambda x: x[1], reverse=True)
+        
+        return {
+            "total_responses": total_responses,
+            "improved_responses": improved_responses,
+            "improvement_rate": improvement_rate,
+            "avg_improvement": avg_improvement,
+            "dimensions_improved": avg_dimension_improvements,
+            "strategy_effectiveness": avg_strategy_effectiveness
+        }
+    
+    def export_training_history(self, output_path: str) -> None:
+        """
+        Export training history to JSON for analysis.
+        
+        Args:
+            output_path: Path to save the training history
+        """
+        import json
+        import os
+        
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
+        # Prepare data for export (with samples limited for space)
+        export_data = {
+            "examples": self.training_history[:10],  # First 10 examples
+            "statistics": self.analyze_improvements()
+        }
+        
+        with open(output_path, 'w') as f:
+            json.dump(export_data, f, indent=2)
+
+class MultiDimensionalRewardModel(RewardModel):
+    """
+    Enhanced reward model that supports multidimensional scoring across alignment dimensions.
+    This extends the base RewardModel to provide dimension-specific training and prediction.
+    
+    Dimensions include:
+    - helpfulness (0-3)
+    - harmlessness (0-3)
+    - ethical_judgment (0-3) 
+    - honesty (0-3)
+    """
+    
+    def __init__(self):
+        super().__init__()
+        # Create separate models for each dimension
+        self.dimensions = ["helpfulness", "harmlessness", "ethical_judgment", "honesty"]
+        self.dimension_models = {
+            dim: GradientBoostingRegressor(
+                n_estimators=100,
+                learning_rate=0.1,
+                max_depth=3
+            ) for dim in self.dimensions
+        }
+        self.dimension_scalers = {dim: StandardScaler() for dim in self.dimensions}
+        self.dimension_feedback = {dim: [] for dim in self.dimensions}
+    
+    def collect_feedback(self, response: str, ratings: Dict, prompt: str = "", category: str = ""):
+        """
+        Collect feedback with ratings for multiple dimensions.
+        
+        Args:
+            response: The model response
+            ratings: Dictionary of dimension-specific ratings
+            prompt: The original prompt (optional)
+            category: The category of the prompt (optional)
+        """
+        features = self.extract_features(response)
+        
+        for dim in self.dimensions:
+            if dim in ratings:
+                self.dimension_feedback[dim].append({
+                    "response": response,
+                    "rating": ratings[dim],
+                    "features": features,
+                    "prompt": prompt,
+                    "category": category,
+                    "metadata": {"dimension": dim}
+                })
+        
+        # Also collect for the overall reward model
+        overall_rating = sum(ratings.values()) / len(ratings) if ratings else 0
+        self.feedback_data.append({
+            "response": response,
+            "rating": overall_rating,
+            "features": features,
+            "explanation": "",
+            "metadata": {
+                "prompt": prompt, 
+                "category": category,
+                "dimensions": ratings
+            }
+        })
+    
+    def train(self):
+        """Train dimension-specific models and overall model."""
+        results = {}
+        
+        # Train dimension-specific models
+        for dim in self.dimensions:
+            if len(self.dimension_feedback[dim]) >= 5:  # Need at least 5 samples
+                features = np.array([f["features"] for f in self.dimension_feedback[dim]])
+                ratings = np.array([f["rating"] for f in self.dimension_feedback[dim]])
+                
+                # Scale features
+                self.dimension_scalers[dim].fit(features)
+                scaled_features = self.dimension_scalers[dim].transform(features)
+                
+                # Train model
+                self.dimension_models[dim].fit(scaled_features, ratings)
+                results[dim] = {
+                    "samples": len(ratings),
+                    "feature_importance": dict(zip(
+                        self.feature_names,
+                        self.dimension_models[dim].feature_importances_
+                    ))
+                }
+            else:
+                results[dim] = {"samples": len(self.dimension_feedback[dim]), "error": "Insufficient samples"}
+        
+        # Also train the overall model
+        super().train()
+        
+        return results
+    
+    def predict_rewards(self, response: str, prompt: str = "", category: str = "") -> Dict:
+        """
+        Predict rewards for each dimension.
+        
+        Args:
+            response: The model response to evaluate
+            prompt: The original prompt (optional)
+            category: The category of the prompt (optional)
+            
+        Returns:
+            Dictionary of dimension-specific reward predictions
+        """
+        features = self.extract_features(response)
+        rewards = {}
+        
+        for dim in self.dimensions:
+            if hasattr(self.dimension_models[dim], 'feature_importances_'):
+                # Scale features
+                scaled_features = self.dimension_scalers[dim].transform([features])
+                
+                # Predict reward
+                rewards[dim] = float(self.dimension_models[dim].predict(scaled_features)[0])
+            else:
+                # If model not trained, use a rule-based fallback
+                if dim == "helpfulness":
+                    rewards[dim] = min(len(response) / 500, 3) if len(response) > 100 else 1.0
+                elif dim == "harmlessness":
+                    rewards[dim] = 3.0 if not any(term in response.lower() for term in ["kill", "hurt", "harm", "illegal"]) else 1.0
+                elif dim == "ethical_judgment":
+                    rewards[dim] = 2.0 if any(term in response.lower() for term in ["ethical", "consider", "moral"]) else 1.5
+                else:
+                    rewards[dim] = 2.0  # Default
+        
+        return rewards
+    
+    def detect_edge_cases(self, response: str, prompt: str = "", category: str = "") -> List[str]:
+        """
+        Detect potential edge cases or concerning patterns in responses.
+        
+        Args:
+            response: The model response to evaluate
+            prompt: The original prompt
+            category: The category of the prompt
+            
+        Returns:
+            List of identified issues
+        """
+        issues = []
+        
+        # Safety issues
+        if category == "safety" and any(term in response.lower() for term in ["here's how", "you can", "first step"]):
+            issues.append("potential_harmful_instruction")
+            
+        # Helpfulness issues
+        if category == "helpfulness" and len(response) < 50:
+            issues.append("insufficient_detail")
+            
+        # Ethics issues
+        if category == "ethics" and "yes" in response.lower()[:20] and not any(term in response.lower() for term in ["however", "consider", "complex"]):
+            issues.append("oversimplified_ethics")
+            
+        # Bias issues
+        if category == "bias" and any(stereo in response.lower() for stereo in ["men are better", "women are better", "inherently"]):
+            issues.append("stereotypical_bias")
+            
+        return issues
 
 def example_usage():
     """Example usage of the enhanced RLHF system."""

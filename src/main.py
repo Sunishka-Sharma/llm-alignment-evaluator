@@ -358,7 +358,7 @@ def generate_comprehensive_report(results_paths: dict, output_file: str = "resul
     
     # Load all results
     for exp_name, path in results_paths.items():
-        analyzer.add_model_results(path)
+        analyzer.add_model_results(exp_name, path)
     
     report = ["# Comprehensive LLM Alignment Analysis\n"]
     

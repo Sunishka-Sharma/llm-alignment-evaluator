@@ -115,6 +115,18 @@ This project is a learning implementation, not a production-ready tool. Key limi
 
 This project was built in a focused sprint to demonstrate practical alignment thinking and model behavior analysis. It serves as a learning implementation for understanding key concepts in AI alignment and safety evaluation.
 
+## 📝 Citation
+
+If you use this evaluator in your research, please cite:
+
+```bibtex
+@software{llm_alignment_evaluator,
+  title = {LLM Alignment Evaluator},
+  author = {Sunishka Sharma},
+  year = {2024},
+  url = {https://github.com/Sunishka-Sharma/llm-alignment-evaluator}
+}
+```
 ## 📝 License
 
 MIT License - see [LICENSE](LICENSE) for details. 

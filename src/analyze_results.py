@@ -1,9 +1,10 @@
+import os
+import json
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import json
 from typing import List, Dict, Optional
-import os
 
 class AlignmentAnalyzer:
     """
@@ -13,11 +14,17 @@ class AlignmentAnalyzer:
     perspective drift analysis.
     """
     
-    def __init__(self, results_file: str):
-        """Initialize with results file (CSV or JSON)."""
-        self.results_file = results_file
-        self.results = self._load_results(results_file)
+    def __init__(self, results_file: str = None):
+        """Initialize with optional results file (CSV or JSON)."""
         self.dimensions = ["helpfulness", "harmlessness", "ethical_judgment", "honesty"]
+        self.model_results = {}
+        if results_file:
+            self.add_model_results(results_file)
+        
+    def add_model_results(self, results_file: str) -> None:
+        """Add results for a model from file."""
+        model_name = os.path.basename(os.path.dirname(results_file))
+        self.model_results[model_name] = self._load_results(results_file)
         
     def _load_results(self, file_path: str) -> pd.DataFrame:
         """Load results from file."""
@@ -31,35 +38,26 @@ class AlignmentAnalyzer:
             raise ValueError(f"Unsupported file format: {file_path}")
     
     def plot_dimension_scores(self, save_path: Optional[str] = None):
-        """Plot average scores across evaluation dimensions."""
-        # Extract scores and convert to numeric
-        score_cols = [f"scores.{dim}" for dim in self.dimensions]
-        
-        # Calculate average scores by category
-        avg_scores = self.results.groupby('category')[score_cols].mean().reset_index()
-        
-        # Reshape for seaborn
-        avg_scores_melted = pd.melt(
-            avg_scores, 
-            id_vars=['category'], 
-            value_vars=score_cols,
-            var_name='dimension', 
-            value_name='score'
-        )
-        
-        # Clean dimension names
-        avg_scores_melted['dimension'] = avg_scores_melted['dimension'].apply(
-            lambda x: x.replace('scores.', '')
-        )
-        
-        # Create plot
+        """Plot average scores across evaluation dimensions for all models."""
         plt.figure(figsize=(12, 8))
-        sns.barplot(x='category', y='score', hue='dimension', data=avg_scores_melted)
-        plt.title('Average Alignment Scores by Category')
-        plt.xlabel('Prompt Category')
+        
+        models = list(self.model_results.keys())
+        x = np.arange(len(self.dimensions))
+        width = 0.8 / len(models)
+        
+        for i, model in enumerate(models):
+            df = self.model_results[model]
+            score_cols = [f"scores.{dim}" for dim in self.dimensions]
+            avg_scores = df[score_cols].mean()
+            
+            plt.bar(x + i * width, avg_scores, width, label=model)
+        
+        plt.title('Average Alignment Scores by Model')
+        plt.xlabel('Dimension')
         plt.ylabel('Score (0-3)')
+        plt.xticks(x + width * (len(models) - 1) / 2, self.dimensions)
         plt.ylim(0, 3)
-        plt.legend(title='Dimension')
+        plt.legend(title='Model')
         plt.tight_layout()
         
         if save_path:
@@ -130,45 +128,62 @@ class AlignmentAnalyzer:
             
         return plt
     
-    def generate_report(self, output_dir: str = "results"):
-        """Generate a comprehensive markdown report with visualizations."""
-        os.makedirs(output_dir, exist_ok=True)
+    def generate_comparative_report(self, report_path: str) -> None:
+        """Generate a comparative analysis report."""
+        report = ["# Model Alignment Comparative Analysis\n"]
         
-        # Generate visualizations
-        dimension_plot_path = os.path.join(output_dir, "dimension_scores.png")
-        self.plot_dimension_scores(save_path=dimension_plot_path)
+        # Overview section
+        report.append("## Overview")
+        models = list(self.model_results.keys())
+        report.append(f"Total models evaluated: {len(models)}")
+        report.append(f"Models: {', '.join(models)}\n")
         
-        # Create markdown report
-        report = f"""# Alignment Evaluation Report
-
-## Overview
-- Total prompts evaluated: {len(self.results)}
-- Categories: {', '.join(self.results['category'].unique())}
-- Model(s): {', '.join(self.results['model_name'].unique() if 'model_name' in self.results.columns else ['unknown'])}
-
-## Alignment Scores
-
-![Dimension Scores]({os.path.basename(dimension_plot_path)})
-
-## Key Findings
-
-### By Category
-"""
+        # Scores comparison
+        report.append("## Alignment Scores Comparison")
+        report.append("![Dimension Scores](plots/dimension_scores.png)\n")
         
-        # Add category insights
-        for category in self.results['category'].unique():
-            category_results = self.results[self.results['category'] == category]
-            flags = [f for sublist in category_results['flags'].dropna() for f in sublist if isinstance(sublist, list)]
+        # Model-specific analysis
+        report.append("## Model-Specific Analysis\n")
+        for model in models:
+            df = self.model_results[model]
+            score_cols = [col for col in df.columns if col.startswith('scores.')]
+            overall_score = df[score_cols].mean().mean()
             
-            report += f"""
-### {category.title()}
-- Average scores: {', '.join([f"{dim}: {category_results[f'scores.{dim}'].mean():.2f}" for dim in self.dimensions])}
-- Flag frequency: {', '.join(f"{f}: {flags.count(f)}" for f in set(flags)) if flags else "No flags"}
-"""
+            report.append(f"\n### {model}")
+            report.append(f"- Overall alignment score: {overall_score:.2f}/3")
+            report.append("- Dimension scores:")
+            for col in score_cols:
+                dim = col.replace('scores.', '')
+                score = df[col].mean()
+                report.append(f"  - {dim}: {score:.2f}/3")
+            
+            report.append("\nPerformance by category:")
+            for cat in df['category'].unique():
+                cat_score = df[df['category'] == cat][score_cols].mean().mean()
+                report.append(f"- {cat}: {cat_score:.2f}/3")
         
-        # Write report to file
-        report_path = os.path.join(output_dir, "analysis_report.md")
+        # Comparative insights if we have multiple models
+        if len(models) > 1:
+            report.append("\n## Comparative Insights")
+            report.append("\nStrengths and differences:")
+            
+            # Compare models on each dimension
+            for col in score_cols:
+                dim = col.replace('scores.', '')
+                report.append(f"\n### {dim.title()}")
+                scores = {model: self.model_results[model][col].mean() for model in models}
+                better_model = max(scores.items(), key=lambda x: x[1])[0]
+                other_models = [m for m in models if m != better_model]
+                
+                for other_model in other_models:
+                    score_diff = scores[better_model] - scores[other_model]
+                    if score_diff > 0.3:  # Significant difference
+                        report.append(f"- {better_model} shows notably better {dim} ({scores[better_model]:.2f} vs {scores[other_model]:.2f})")
+                    else:
+                        report.append(f"- Both models perform similarly in {dim} ({scores[better_model]:.2f} vs {scores[other_model]:.2f})")
+        
+        # Write report
         with open(report_path, 'w') as f:
-            f.write(report)
+            f.write('\n'.join(report))
             
         return report_path 

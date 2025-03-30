@@ -1,7 +1,6 @@
 from typing import List, Dict, Tuple, Callable, Optional
 import re
 import logging
-import openai
 import json
 
 class ConstitutionalRule:
@@ -21,14 +20,10 @@ class ConstitutionalRule:
 class ConstitutionalRewriter:
     """
     A system for rewriting prompts that might violate ethical principles
-    using a constitution of rules inspired by Anthropic's Constitutional AI.
-    
-    Novel contribution: Context-aware rule selection and multi-stage
-    rewriting with feedback loops.
+    using a constitution of rules.
     """
     
     def __init__(self):
-        self.client = openai.OpenAI()  # Initialize the client
         self.rules = self._initialize_rules()
         self.rewrite_history = []
         logging.info(f"Initialized ConstitutionalRewriter with {len(self.rules)} rules")
@@ -39,33 +34,33 @@ class ConstitutionalRewriter:
             ConstitutionalRule(
                 name="harm_prevention",
                 description="Rewrite prompts that could lead to harmful instructions",
-                check_fn=lambda x: any(term in x.lower() for term in 
-                                     ["kill", "hurt", "harm", "weapon", "steal", "illegal"]),
+                check_fn=lambda x: any(term in x.lower() for term in ["kill", "hurt", "harm", "weapon", "steal"]) 
+                         and not any(safe in x.lower() for safe in ["prevent", "avoid", "don't", "stop"]),
                 rewrite_prompt="Rewrite this prompt to prevent potential harm while preserving the user's information need: {prompt}"
             ),
             
             ConstitutionalRule(
                 name="avoid_deception",
                 description="Rewrite prompts that encourage deception",
-                check_fn=lambda x: any(term in x.lower() for term in 
-                                     ["lie", "trick", "deceive", "manipulate", "fake"]),
+                check_fn=lambda x: any(term in x.lower() for term in ["trick", "deceive", "manipulate", "fake"]) 
+                         or ("lie" in x.lower() and not any(good in x.lower() for good in ["rely", "belief"])),
                 rewrite_prompt="Rewrite this prompt to avoid encouraging deception while still addressing the user's underlying question: {prompt}"
             ),
             
             ConstitutionalRule(
                 name="respect_autonomy",
                 description="Rewrite prompts that may violate others' autonomy",
-                check_fn=lambda x: any(term in x.lower() for term in 
-                                     ["force", "make them", "without consent", "against their will"]),
+                check_fn=lambda x: any(term in x.lower() for term in ["force", "make them", "without consent", "against their will"])
+                         and not any(good in x.lower() for good in ["enforce", "maker", "consent form"]),
                 rewrite_prompt="Rewrite this prompt to respect individual autonomy while still addressing the user's question: {prompt}"
             ),
             
-            # Novel rule: Perspective-broadening (unique to our implementation)
             ConstitutionalRule(
                 name="perspective_broadening",
                 description="Rewrite narrow ethical questions to consider multiple perspectives",
                 check_fn=lambda x: re.search(r"(should|is it (okay|right|wrong|ethical))", x.lower()) 
-                                and len(x.split()) < 15,
+                                and len(x.split()) < 15
+                                and not any(term in x.lower() for term in ["why", "how", "what if", "explain"]),
                 rewrite_prompt="This prompt asks for a narrow ethical judgment. Rewrite it to encourage considering multiple perspectives and stakeholders: {prompt}"
             )
         ]
@@ -80,13 +75,11 @@ class ConstitutionalRewriter:
         return triggered_rules
     
     def rewrite_prompt(self, 
-                       prompt: str, 
-                       model_rewrite_fn: Callable[[str], str], 
-                       max_iterations: int = 2) -> Dict:
+                      prompt: str, 
+                      model_rewrite_fn: Callable[[str], str], 
+                      max_iterations: int = 2) -> Dict:
         """
-        Rewrite a prompt using constitutional rules and an LLM.
-        
-        Novel contribution: Multi-stage rewriting with iteration feedback.
+        Rewrite a prompt using constitutional rules and the provided model function.
         """
         original_prompt = prompt
         iterations = []
@@ -98,20 +91,15 @@ class ConstitutionalRewriter:
             if not triggered_rules:
                 break
                 
-            # Choose highest priority rule (could be randomized or weighted)
+            # Choose highest priority rule
             rule = triggered_rules[0]
             
             # Generate rewrite instruction
             rewrite_instruction = rule.rewrite_prompt.format(prompt=current_prompt)
             
             try:
-                # Get rewritten prompt using OpenAI API
-                response = self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": rewrite_instruction}],
-                    temperature=0.7
-                )
-                rewritten_prompt = response.choices[0].message.content
+                # Get rewritten prompt using provided model function
+                rewritten_prompt = model_rewrite_fn(rewrite_instruction)
             except Exception as e:
                 logging.error(f"Error in rewrite_prompt: {str(e)}")
                 rewritten_prompt = current_prompt

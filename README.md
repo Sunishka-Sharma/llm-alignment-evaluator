@@ -7,11 +7,11 @@ A comprehensive framework for evaluating and enhancing LLM alignment across mult
 ## 🎬 Demo Videos & Results
 
 ### Interactive Dashboard Walkthrough
-![Dashboard Demo](https://github.com/user-attachments/assets/3a051841-21be-44a4-b46f-6705419c1c66)
+<video src="https://github.com/user-attachments/assets/3a051841-21be-44a4-b46f-6705419c1c66" controls></video>
 *Interactive dashboard visualizing evaluation results and model comparisons*
 
 ### Results Exploration
-![Results Walkthrough](https://github.com/user-attachments/assets/2a0736e2-d989-4709-aac6-f7a414819523)
+<video src="https://github.com/user-attachments/assets/2a0736e2-d989-4709-aac6-f7a414819523" controls></video>
 *Exploring the comprehensive evaluation results and generated reports*
 
 > **📝 Note:** To access the complete set of documented results, switch to the `sample_results` branch:

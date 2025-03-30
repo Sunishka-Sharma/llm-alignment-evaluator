@@ -133,6 +133,76 @@ def create_api_usage_chart(request_data: dict, model_name: str) -> go.Figure:
     )
     return fig
 
+def create_comparison_plot(results: dict, selected_models: list) -> go.Figure:
+    """Create a comparison plot for all selected models."""
+    fig = go.Figure()
+    
+    for model in selected_models:
+        df = results[model]['eval']
+        score_cols = [col for col in df.columns if col.startswith('scores.')]
+        scores = df[score_cols].mean().values.tolist()
+        categories = [col.replace('scores.', '') for col in score_cols]
+        
+        # Add trace for each model
+        fig.add_trace(go.Scatterpolar(
+            r=scores + [scores[0]],
+            theta=categories + [categories[0]],
+            fill='toself',
+            name=model
+        ))
+    
+    fig.update_layout(
+        polar=dict(radialaxis=dict(range=[0, 3])),
+        showlegend=True,
+        title="Model Comparison - Alignment Dimensions"
+    )
+    return fig
+
+def display_rewrite_analysis(results: dict, model: str) -> None:
+    """Display rewrite analysis for a model."""
+    rewrite_data = results[model].get('rewrite', {})
+    if not rewrite_data:
+        st.info("No rewrite data available for this model.")
+        return
+        
+    total_rewrites = len([r for r in rewrite_data if r.get("improved", False)])
+    st.metric("Total Prompts Rewritten", total_rewrites)
+    
+    # Rules triggered analysis
+    rules_triggered = {}
+    for entry in rewrite_data:
+        for rule in entry.get("rules_triggered", []):
+            rules_triggered[rule] = rules_triggered.get(rule, 0) + 1
+    
+    if rules_triggered:
+        st.subheader("Rules Triggered")
+        rules_df = pd.DataFrame(
+            {"Rule": list(rules_triggered.keys()), 
+             "Count": list(rules_triggered.values())}
+        ).sort_values("Count", ascending=False)
+        
+        # Create bar chart for rules
+        fig = px.bar(
+            rules_df,
+            x="Rule",
+            y="Count",
+            title="Constitutional Rules Triggered"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Show example rewrites
+        st.subheader("Example Rewrites")
+        for entry in rewrite_data[:3]:  # Show first 3 examples
+            if entry.get("improved", False):
+                with st.expander(f"Rewrite Example - Rule: {', '.join(entry.get('rules_triggered', []))}"):
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.markdown("**Original Prompt:**")
+                        st.text(entry.get("original_prompt", ""))
+                    with col2:
+                        st.markdown("**Rewritten Prompt:**")
+                        st.text(entry.get("final_prompt", ""))
+
 def display_chart(fig: go.Figure, container, key: str, use_container_width: bool = True):
     """Safely display a plotly chart with a unique key."""
     if fig is not None:
@@ -172,12 +242,13 @@ def main():
         return
     
     # Analysis tabs
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "Overall Scores",
+        "Model Comparison",
         "Category Analysis",
         "Perspective Analysis",
-        "API Usage",
-        "Raw Data"
+        "Constitutional Rewrites",
+        "API Usage"
     ])
     
     # Generate all charts once
@@ -205,12 +276,32 @@ def main():
                 st.metric("Overall Score", f"{overall_score:.2f}/3")
     
     with tab2:
+        st.header("Model Comparison")
+        if len(selected_models) > 1:
+            comparison_fig = create_comparison_plot(results, selected_models)
+            st.plotly_chart(comparison_fig, use_container_width=True)
+            
+            # Add comparison table
+            comparison_data = []
+            for model in selected_models:
+                df = results[model]['eval']
+                score_cols = [col for col in df.columns if col.startswith('scores.')]
+                scores = {col.replace('scores.', ''): df[col].mean() for col in score_cols}
+                scores['Model'] = model
+                comparison_data.append(scores)
+            
+            comparison_df = pd.DataFrame(comparison_data).set_index('Model')
+            st.dataframe(comparison_df.round(2), use_container_width=True)
+        else:
+            st.info("Please select multiple models to see comparison.")
+    
+    with tab3:
         st.header("Performance by Category")
         for i, model in enumerate(selected_models):
             st.subheader(model)
             display_chart(model_charts[model]['category'], st, f"category_{model}_{i}")
     
-    with tab3:
+    with tab4:
         st.header("Perspective Analysis")
         for i, model in enumerate(selected_models):
             st.subheader(model)
@@ -219,7 +310,13 @@ def main():
             else:
                 st.info("No perspective analysis data available.")
     
-    with tab4:
+    with tab5:
+        st.header("Constitutional Rewrite Analysis")
+        for model in selected_models:
+            st.subheader(f"{model} Rewrite Analysis")
+            display_rewrite_analysis(results, model)
+    
+    with tab6:
         st.header("API Usage Analysis")
         for i, model in enumerate(selected_models):
             st.subheader(model)
@@ -241,12 +338,6 @@ def main():
             
             if model_charts[model]['api'] is not None:
                 display_chart(model_charts[model]['api'], st, f"api_{model}_{i}")
-    
-    with tab5:
-        st.header("Raw Data")
-        for i, model in enumerate(selected_models):
-            with st.expander(f"Show {model} Data"):
-                st.dataframe(results[model]['eval'], key=f"raw_{model}_{i}")
 
 if __name__ == "__main__":
     main()

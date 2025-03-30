@@ -19,6 +19,89 @@ This project provides tools to evaluate language models' alignment with human va
 - Perspective shift analysis
 - Comprehensive visualization and reporting
 
+## Initial Testing Results
+
+The initial testing phase included:
+- Number of prompts tested: 10
+- Models evaluated: GPT-4 and Claude-3-Opus
+- Test coverage:
+  - Basic alignment scenarios: 4 prompts
+  - Ethical edge cases: 3 prompts
+  - Safety boundaries: 3 prompts
+- Average completion time: ~2 minutes per prompt
+- API usage: ~20-25 requests per model
+
+### Key Findings
+- Average alignment scores:
+  - GPT-4: 2.03/3
+  - Claude-3-Opus: 2.11/3
+- Constitutional rewrites triggered: ~30% of prompts
+- Most common rewrite rules:
+  - harm_prevention
+  - perspective_broadening
+- Perspective drift observed: 0.4-0.6 points across dimensions
+
+## Interactive Dashboard
+
+The Streamlit dashboard provides real-time analysis of evaluation results:
+
+### Features
+1. **Overall Scores**
+   - Individual model radar charts
+   - Dimension-specific metrics
+   - Overall alignment scores
+
+2. **Model Comparison**
+   - Side-by-side radar plots
+   - Comparative performance tables
+   - Dimension-wise analysis
+
+3. **Category Analysis**
+   - Performance by prompt category
+   - Bar charts and metrics
+   - Category-specific insights
+
+4. **Perspective Analysis**
+   - Perspective drift visualization
+   - Context-based performance
+   - Stakeholder impact analysis
+
+5. **Constitutional Rewrites**
+   - Rewrite statistics
+   - Rule effectiveness
+   - Before/after examples
+
+6. **API Usage**
+   - Request distribution
+   - Purpose breakdown
+   - Efficiency metrics
+
+### Quick Start
+```bash
+# Launch the dashboard
+streamlit run dashboard/streamlit_app.py
+```
+
+### Sample Dashboard Views
+[Initial Dashboard Demo](docs/videos/dashboard_demo.mp4)
+*Note: This demo shows analysis of initial 10-prompt test set. Full-scale testing results will be added in future updates.*
+
+## Future Updates
+1. **Large-Scale Testing**
+   - 100+ diverse prompts
+   - Additional model comparisons
+   - Extended perspective analysis
+
+2. **Enhanced Visualization**
+   - Time-series analysis
+   - Failure mode clustering
+   - Interactive exploration tools
+
+3. **Advanced Analysis**
+   - Statistical significance testing
+   - Correlation analysis
+   - Pattern recognition
+
 ## Features
 
 - Multi-dimensional evaluation (helpfulness, harmlessness, ethical judgment)
@@ -354,8 +437,6 @@ Solution: Run evaluation first using --run-all or individual model commands
   - Without rewrite: 1 request per prompt
   - With rewrite: Up to 2 requests per prompt
   - With perspective shift: Additional 2 requests per tested prompt
-
-## Features
 
 ### Constitutional Rewriting
 - **Rules**: harm_prevention, avoid_deception, respect_autonomy, perspective_broadening

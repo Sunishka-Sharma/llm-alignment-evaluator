@@ -39,7 +39,9 @@ class AlignmentAnalyzer:
     
     def plot_dimension_scores(self, save_path: Optional[str] = None):
         """Plot average scores across evaluation dimensions for all models."""
-        plt.figure(figsize=(12, 8))
+        # Bar plot
+        plt.figure(figsize=(15, 6))
+        plt.subplot(121)
         
         models = list(self.model_results.keys())
         x = np.arange(len(self.dimensions))
@@ -55,13 +57,34 @@ class AlignmentAnalyzer:
         plt.title('Average Alignment Scores by Model')
         plt.xlabel('Dimension')
         plt.ylabel('Score (0-3)')
-        plt.xticks(x + width * (len(models) - 1) / 2, self.dimensions)
+        plt.xticks(x + width * (len(models) - 1) / 2, self.dimensions, rotation=45)
         plt.ylim(0, 3)
         plt.legend(title='Model')
-        plt.tight_layout()
         
+        # Spider plot
+        plt.subplot(122, polar=True)
+        angles = np.linspace(0, 2*np.pi, len(self.dimensions), endpoint=False)
+        
+        for model in models:
+            df = self.model_results[model]
+            score_cols = [f"scores.{dim}" for dim in self.dimensions]
+            avg_scores = df[score_cols].mean().values
+            
+            # Close the plot by appending first value
+            values = np.concatenate((avg_scores, [avg_scores[0]]))
+            angles_plot = np.concatenate((angles, [angles[0]]))
+            
+            plt.plot(angles_plot, values, 'o-', linewidth=2, label=model)
+            plt.fill(angles_plot, values, alpha=0.25)
+        
+        plt.xticks(angles, self.dimensions)
+        plt.ylim(0, 3)
+        plt.title('Model Alignment Dimensions')
+        plt.legend(title='Model', loc='upper right', bbox_to_anchor=(0.1, 0.1))
+        
+        plt.tight_layout()
         if save_path:
-            plt.savefig(save_path)
+            plt.savefig(save_path, bbox_inches='tight', dpi=300)
             
         return plt
     
@@ -129,8 +152,15 @@ class AlignmentAnalyzer:
         return plt
     
     def generate_comparative_report(self, report_path: str) -> None:
-        """Generate a comparative analysis report."""
-        report = ["# Model Alignment Comparative Analysis\n"]
+        """Generate a comprehensive analysis report."""
+        # Create plots directory
+        plots_dir = os.path.join(os.path.dirname(report_path), "plots")
+        os.makedirs(plots_dir, exist_ok=True)
+        
+        # Generate and save all plots first
+        self._generate_all_plots(plots_dir)
+        
+        report = ["# Comprehensive LLM Alignment Analysis\n"]
         
         # Overview section
         report.append("## Overview")
@@ -140,10 +170,11 @@ class AlignmentAnalyzer:
         
         # Scores comparison
         report.append("## Alignment Scores Comparison")
-        report.append("![Dimension Scores](plots/dimension_scores.png)\n")
+        report.append("![Dimension Scores](plots/dimension_scores_comparison.png)\n")
+        report.append("### Key Findings")
         
-        # Model-specific analysis
-        report.append("## Model-Specific Analysis\n")
+        # Add model-specific analysis
+        report.append("\n## Model-Specific Analysis")
         for model in models:
             df = self.model_results[model]
             score_cols = [col for col in df.columns if col.startswith('scores.')]
@@ -157,6 +188,11 @@ class AlignmentAnalyzer:
                 score = df[col].mean()
                 report.append(f"  - {dim}: {score:.2f}/3")
             
+            # Add model-specific plots
+            report.append(f"\n![{model} Radar](plots/{model}_radar.png)")
+            report.append(f"\n![{model} Categories](plots/{model}_categories.png)")
+            
+            # Category performance
             report.append("\nPerformance by category:")
             for cat in df['category'].unique():
                 cat_score = df[df['category'] == cat][score_cols].mean().mean()
@@ -186,4 +222,52 @@ class AlignmentAnalyzer:
         with open(report_path, 'w') as f:
             f.write('\n'.join(report))
             
-        return report_path 
+        return report_path
+    
+    def _generate_all_plots(self, plots_dir: str) -> None:
+        """Generate and save all plots for the analysis."""
+        # Dimension scores comparison (all models)
+        plt.figure(figsize=(15, 6))
+        self.plot_dimension_scores(save_path=os.path.join(plots_dir, "dimension_scores_comparison.png"))
+        plt.close()
+        
+        # Individual model plots
+        for model_name, df in self.model_results.items():
+            # Radar plot
+            plt.figure(figsize=(10, 8))
+            score_cols = [f"scores.{dim}" for dim in self.dimensions]
+            scores = df[score_cols].mean().values
+            angles = np.linspace(0, 2*np.pi, len(self.dimensions), endpoint=False)
+            
+            # Close the plot
+            scores = np.concatenate((scores, [scores[0]]))
+            angles = np.concatenate((angles, [angles[0]]))
+            
+            ax = plt.subplot(111, polar=True)
+            ax.plot(angles, scores, 'o-', linewidth=2)
+            ax.fill(angles, scores, alpha=0.25)
+            ax.set_xticks(angles[:-1])
+            ax.set_xticklabels(self.dimensions)
+            plt.title(f"{model_name} Alignment Dimensions")
+            plt.savefig(os.path.join(plots_dir, f"{model_name}_radar.png"))
+            plt.close()
+            
+            # Category plot
+            plt.figure(figsize=(12, 6))
+            cat_scores = df.groupby('category')[score_cols].mean()
+            cat_scores.mean(axis=1).plot(kind='bar')
+            plt.title(f"{model_name} - Scores by Category")
+            plt.ylabel("Score (0-3)")
+            plt.xticks(rotation=45)
+            plt.tight_layout()
+            plt.savefig(os.path.join(plots_dir, f"{model_name}_categories.png"))
+            plt.close()
+            
+            # Perspective drift plot (if available)
+            if 'perspective' in df.columns:
+                plt.figure(figsize=(10, 8))
+                self.plot_perspective_drift(
+                    df[df['perspective'] != 'default'].groupby('perspective')[score_cols].mean().to_dict(),
+                    save_path=os.path.join(plots_dir, f"{model_name}_perspective_drift.png")
+                )
+                plt.close() 

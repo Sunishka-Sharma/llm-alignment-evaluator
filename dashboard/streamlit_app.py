@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import json
 from pathlib import Path
 import sys
+import os
 
 # Add parent directory to path
 sys.path.append(str(Path(__file__).parent.parent))
@@ -25,11 +26,24 @@ def load_results(results_dir: str) -> dict:
     if not results_path.exists():
         return {}
     
-    for file in results_path.glob("*.csv"):
-        model_name = file.stem.replace("_results", "")
-        results[model_name] = pd.read_csv(file)
+    for model_dir in results_path.glob("*"):
+        if model_dir.is_dir():
+            eval_file = model_dir / "evaluation_results.csv"
+            if eval_file.exists():
+                results[model_dir.name] = {
+                    'eval': pd.read_csv(eval_file),
+                    'rewrite': load_json(model_dir / "rewrite_history.json"),
+                    'requests': load_json(model_dir / "request_log.json")
+                }
     
     return results
+
+def load_json(path: Path) -> dict:
+    """Load JSON file if it exists."""
+    if path.exists():
+        with open(path) as f:
+            return json.load(f)
+    return {}
 
 def plot_dimension_scores(df: pd.DataFrame, model_name: str):
     """Plot average scores across dimensions."""
@@ -51,6 +65,11 @@ def plot_dimension_scores(df: pd.DataFrame, model_name: str):
         yaxis_title="Score (0-3)",
         yaxis_range=[0, 3]
     )
+    
+    # Save plot
+    if not os.path.exists('results/plots'):
+        os.makedirs('results/plots')
+    fig.write_image(f"results/plots/{model_name}_dimension_scores.png")
     
     return fig
 
@@ -128,7 +147,9 @@ def main():
     results = load_results(results_dir)
     
     if not results:
-        st.warning("No results found. Please run evaluation first!")
+        st.warning("⚠️ No results found! Please run evaluation first:")
+        st.code("python src/main.py --model gpt-4")
+        st.code("python src/main.py --model claude-3-opus-20240229")
         return
     
     # Model selection
@@ -143,11 +164,15 @@ def main():
         st.warning("Please select at least one model to analyze.")
         return
     
+    # Create plots directory if it doesn't exist
+    os.makedirs('results/plots', exist_ok=True)
+    
     # Analysis tabs
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "Overall Scores",
         "Category Analysis",
-        "Perspective Drift",
+        "Prompt Rewrites",
+        "API Usage",
         "Raw Data"
     ])
     
@@ -157,59 +182,129 @@ def main():
         
         for i, model in enumerate(selected_models):
             with cols[i]:
-                df = results[model]
-                fig = plot_dimension_scores(df, model)
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Summary metrics
+                df = results[model]['eval']
                 score_cols = [col for col in df.columns if col.startswith('scores.')]
                 overall_score = df[score_cols].mean().mean()
-                st.metric("Overall Alignment Score", f"{overall_score:.2f}/3")
+                
+                # Radar chart
+                categories = [col.replace('scores.', '') for col in score_cols]
+                scores = df[score_cols].mean().values.tolist()
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatterpolar(
+                    r=scores + [scores[0]],
+                    theta=categories + [categories[0]],
+                    fill='toself',
+                    name=model
+                ))
+                
+                fig.update_layout(
+                    polar=dict(
+                        radialaxis=dict(
+                            visible=True,
+                            range=[0, 3]
+                        )),
+                    showlegend=True,
+                    title=f"{model} Alignment Dimensions"
+                )
+                
+                # Save radar plot
+                fig.write_image(f"results/plots/{model}_radar.png")
+                
+                st.plotly_chart(fig, use_container_width=True, key=f"radar_{model}")
+                st.metric("Overall Score", f"{overall_score:.2f}/3")
     
     with tab2:
-        st.header("Category Analysis")
-        for model in selected_models:
-            df = results[model]
-            fig = plot_category_comparison(df, model)
-            st.plotly_chart(fig, use_container_width=True)
+        st.header("Performance by Category")
+        
+        for i, model in enumerate(selected_models):
+            st.subheader(model)
+            df = results[model]['eval']
             
-            # Category insights
-            st.subheader(f"Category Insights for {model}")
-            categories = df['category'].unique()
-            cols = st.columns(len(categories))
+            # Group by category
+            score_cols = [col for col in df.columns if col.startswith('scores.')]
+            cat_scores = df.groupby('category')[score_cols].mean()
             
-            for i, cat in enumerate(categories):
-                with cols[i]:
-                    cat_df = df[df['category'] == cat]
-                    score_cols = [col for col in df.columns if col.startswith('scores.')]
-                    avg_score = cat_df[score_cols].mean().mean()
-                    st.metric(cat.title(), f"{avg_score:.2f}/3")
+            # Plot
+            fig = px.bar(
+                cat_scores.mean(axis=1).reset_index(),
+                x='category',
+                y=0,
+                title=f"{model} - Scores by Category",
+                labels={'0': 'Score', 'category': 'Category'}
+            )
+            
+            # Save category plot
+            fig.write_image(f"results/plots/{model}_category_scores.png")
+            
+            st.plotly_chart(fig, use_container_width=True, key=f"cat_{model}")
     
     with tab3:
-        st.header("Perspective Drift Analysis")
-        for model in selected_models:
-            df = results[model]
-            fig = plot_perspective_drift(df, model)
-            if fig:
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.info("No perspective analysis data available for this model.")
+        st.header("Prompt Rewrite Analysis")
+        
+        for i, model in enumerate(selected_models):
+            st.subheader(model)
+            rewrite_data = results[model].get('rewrite', {})
+            
+            if not rewrite_data:
+                st.info("No rewrite data available. Run evaluation with --rewrite flag.")
+                continue
+            
+            # Show rewrite stats
+            rewrites = pd.DataFrame(rewrite_data)
+            st.metric("Total Rewrites", len(rewrites))
+            
+            if not rewrites.empty:
+                st.write("Sample Rewrites:")
+                for _, row in rewrites.iterrows():
+                    with st.expander(f"Rewrite due to: {', '.join(row['rules_triggered'])}"):
+                        st.text("Original:")
+                        st.code(row['original_prompt'])
+                        st.text("Rewritten:")
+                        st.code(row['final_prompt'])
     
     with tab4:
-        st.header("Raw Data")
-        model = st.selectbox("Select Model", selected_models)
-        df = results[model]
-        st.dataframe(df)
+        st.header("API Usage Analysis")
         
-        # Export option
-        csv = df.to_csv(index=False)
-        st.download_button(
-            "Download CSV",
-            csv,
-            f"{model}_results.csv",
-            "text/csv",
-            key='download-csv'
-        )
+        for i, model in enumerate(selected_models):
+            st.subheader(model)
+            request_data = results[model].get('requests', {})
+            
+            if not request_data:
+                st.info("No request log available.")
+                continue
+            
+            # Show request stats
+            requests = pd.DataFrame(request_data.get('requests', []))
+            total = request_data.get('total_requests', 0)
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Requests", total)
+            
+            if not requests.empty:
+                with col2:
+                    by_purpose = requests['purpose'].value_counts()
+                    st.metric("Unique Purposes", len(by_purpose))
+                
+                # Plot requests by purpose
+                fig = px.pie(
+                    values=by_purpose.values,
+                    names=by_purpose.index,
+                    title="Requests by Purpose"
+                )
+                
+                # Save API usage plot
+                fig.write_image(f"results/plots/{model}_api_usage.png")
+                
+                st.plotly_chart(fig, use_container_width=True, key=f"api_{model}")
+    
+    with tab5:
+        st.header("Raw Data")
+        
+        for i, model in enumerate(selected_models):
+            with st.expander(f"Show {model} Data"):
+                st.dataframe(results[model]['eval'])
 
 if __name__ == "__main__":
     main() 

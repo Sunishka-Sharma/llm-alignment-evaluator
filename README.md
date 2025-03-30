@@ -83,7 +83,9 @@ streamlit run dashboard/streamlit_app.py
 ```
 
 ### Sample Dashboard Views
-[Initial Dashboard Demo](docs/videos/dashboard_demo.mp4)
+
+https://github.com/Sunishka-Sharma/llm-alignment-evaluator/raw/main/docs/videos/app-run.mov
+
 *Note: This demo shows analysis of initial 10-prompt test set. Full-scale testing results will be added in future updates.*
 
 ## Future Updates

@@ -227,23 +227,28 @@ The evaluation generates the following outputs:
 ```
 results/
 ├── model_evaluations/          # Raw evaluation data
-│   ├── gpt4/
+│   ├── gpt_4/
 │   │   ├── evaluation_results.csv
 │   │   ├── rewrite_history.json
 │   │   ├── request_log.json
 │   │   └── cross_evaluation_results.json
-│   └── claude3/
+│   └── claude_3_opus_20240229/
 │       └── ...
 ├── plots/                      # Generated visualizations
 │   ├── comparison/            # Cross-model analysis
-│   │   ├── dimension_scores_comparison.png    # Overall model comparison
-│   │   └── cross_model_evaluation.png         # Model-to-model evaluation
+│   │   ├── dimension_scores_spider.png    # Spider chart comparison
+│   │   ├── dimension_scores_bar.png       # Bar chart comparison
+│   │   ├── category_scores.png            # Category performance comparison
+│   │   ├── rewrite_effectiveness.png      # Constitutional rewriting effectiveness
+│   │   ├── cross_model_evaluation.png     # Model-to-model evaluation
+│   │   └── self_vs_cross_evaluation.png   # Self vs cross-evaluation comparison
 │   └── model_specific/        # Individual model analysis
-│       ├── gpt4/
-│       │   ├── radar.png                      # Individual model dimensions
-│       │   ├── categories.png                 # Category performance
-│       │   └── perspective_drift.png          # Perspective analysis
-│       └── claude3/
+│       ├── gpt_4/
+│       │   ├── radar.png                  # Individual model dimensions
+│       │   ├── dimension_scores_bar.png   # Dimension scores bar chart
+│       │   ├── categories.png             # Category performance
+│       │   └── perspective_drift.png      # Perspective analysis
+│       └── claude_3_opus_20240229/
 │           └── ...
 ├── analysis/                   # Generated reports
 │   ├── comprehensive_report.md # Overall analysis report
@@ -251,8 +256,6 @@ results/
 │   └── metrics_summary.json    # Summary metrics in JSON format
 └── rlhf_demo/                  # RLHF training demo results
     ├── dimension_improvements.png     # Improvement by dimension visualization
-    ├── strategy_effectiveness.png     # Strategy effectiveness visualization
-    ├── self_vs_cross_eval.png         # Self vs cross-evaluation comparison
     └── training_history.json          # RLHF training history and examples
 ```
 
@@ -377,13 +380,14 @@ Solution:
   - Verify that prompts actually triggered the rewrite rules (only ~30% of prompts typically trigger rewrites)
 ```
 
-4. **JSON Parse Errors in Cross-Evaluation**
+4. **Visualization Issues**
 ```
-Error: Failed to parse JSON from model's response
-Solution: 
-  - Check model's temperature setting (lower temperature gives more consistent JSON)
-  - Increase max_tokens if responses are getting cut off
-  - Edit the get_model_evaluation function to improve JSON parsing robustness
+Error: Missing or incomplete visualizations
+Solution:
+  - Run the generate_plots.py script directly: python generate_plots.py
+  - Ensure you have evaluation results in results/model_evaluations/ directory
+  - Check for any error messages during plot generation
+  - Verify that matplotlib and seaborn are properly installed
 ```
 
 5. **Dashboard Issues**
@@ -424,29 +428,6 @@ Solution:
   - For local testing, use fewer prompts by editing prompts/eval_prompts.csv
 ```
 
-9. **Visualizations Not Generating**
-```
-Error: Missing matplotlib dependencies
-Solution:
-  - Install additional visualizations: pip install matplotlib>=3.4.0 seaborn>=0.11.0
-  - Check plotting directory permissions
-  - On headless systems, use: matplotlib.use('Agg')
-```
-
-10. **Monitoring API Usage**
-```
-Concern: Unexpected high API costs
-Solution:
-  - Check request_log.json files in model_evaluations/<model_name>/ to see the total requests
-  - The dashboard's "API Usage" tab provides a detailed breakdown of request types
-  - To reduce API usage:
-    * Use fewer prompts in eval_prompts.csv
-    * Disable cross-evaluation for individual model runs by using --model parameter instead of --run-all
-    * For testing, run individual models rather than using --run-all
-    * Increase REQUEST_DELAY in src/main.py to better manage rate limits
-  - Each full run with --run-all and 10 prompts typically uses ~110-120 API calls total
-```
-
 ## 📝 Citation
 
 ```bibtex
@@ -474,7 +455,7 @@ This script will:
 1. Create all comparison plots in `results/plots/comparison/` including:
    - Dimension scores (bar and spider charts)
    - Category comparison
-   - Flags frequency
+   - Rewrite effectiveness
    - Cross-model evaluation
    - Self vs Cross evaluation comparison
    
@@ -487,6 +468,20 @@ This script will:
 3. Run the RLHF demo to generate RLHF-related visualizations
 
 The script uses existing evaluation results and does not require modifying the main.py file. It will automatically load all available model evaluations and generate the appropriate visualizations.
+
+### Key Visualizations Explained
+
+#### Rewrite Effectiveness
+The rewrite effectiveness visualization provides insights into how well the constitutional rewriting system improves prompts:
+- Shows the percentage of prompts that were successfully improved
+- Displays the count of prompts that were improved vs. not improved for each model
+- Helps analyze the effectiveness of different rewriting rules
+
+#### Self vs Cross Evaluation
+This visualization compares how models evaluate themselves versus how they are evaluated by other models:
+- Side-by-side comparison of self and cross-evaluation scores across dimensions
+- Helps identify potential biases in self-evaluation
+- Reveals discrepancies in how models judge the same responses
 
 ### Benefits of Using `generate_plots.py`
 

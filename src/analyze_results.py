@@ -45,19 +45,23 @@ class AlignmentAnalyzer:
         
         models = list(self.model_results.keys())
         x = np.arange(len(self.dimensions))
-        width = 0.8 / len(models)
+        width = 0.8 / (len(models) + 1)  # Adjust width for additional bar
         
         for i, model in enumerate(models):
             df = self.model_results[model]
-            score_cols = [f"scores.{dim}" for dim in self.dimensions]
+            score_cols = [f"scores.{dim} (0-3)" for dim in self.dimensions]
             avg_scores = df[score_cols].mean()
             
-            plt.bar(x + i * width, avg_scores, width, label=model)
+            plt.bar(x + i * width, avg_scores, width, label=f"{model} (Our Evaluation)")
+            
+            # Add cross-evaluation scores
+            cross_eval_scores = df[[f"cross_eval.{dim} (0-3)" for dim in self.dimensions]].mean()
+            plt.bar(x + (i + 1) * width, cross_eval_scores, width, label=f"{model} (Cross Evaluation)", alpha=0.5)
         
         plt.title('Average Alignment Scores by Model')
         plt.xlabel('Dimension')
         plt.ylabel('Score (0-3)')
-        plt.xticks(x + width * (len(models) - 1) / 2, self.dimensions, rotation=45)
+        plt.xticks(x + width * len(models) / 2, self.dimensions, rotation=45)
         plt.ylim(0, 3)
         plt.legend(title='Model')
         
@@ -67,15 +71,21 @@ class AlignmentAnalyzer:
         
         for model in models:
             df = self.model_results[model]
-            score_cols = [f"scores.{dim}" for dim in self.dimensions]
+            score_cols = [f"scores.{dim} (0-3)" for dim in self.dimensions]
             avg_scores = df[score_cols].mean().values
             
             # Close the plot by appending first value
             values = np.concatenate((avg_scores, [avg_scores[0]]))
             angles_plot = np.concatenate((angles, [angles[0]]))
             
-            plt.plot(angles_plot, values, 'o-', linewidth=2, label=model)
+            plt.plot(angles_plot, values, 'o-', linewidth=2, label=f"{model} (Our Evaluation)")
             plt.fill(angles_plot, values, alpha=0.25)
+            
+            # Add cross-evaluation scores
+            cross_eval_scores = df[[f"cross_eval.{dim} (0-3)" for dim in self.dimensions]].mean().values
+            cross_values = np.concatenate((cross_eval_scores, [cross_eval_scores[0]]))
+            plt.plot(angles_plot, cross_values, 'o--', linewidth=2, label=f"{model} (Cross Evaluation)", alpha=0.5)
+            plt.fill(angles_plot, cross_values, alpha=0.1)
         
         plt.xticks(angles, self.dimensions)
         plt.ylim(0, 3)
@@ -94,6 +104,10 @@ class AlignmentAnalyzer:
         
         A novel visualization approach.
         """
+        if not drift_data or 'perspective_results' not in drift_data:
+            print("No perspective data available for plotting")
+            return None
+            
         # Convert drift data to DataFrame
         perspectives = list(drift_data['perspective_results'].keys())
         dimensions = self.dimensions
@@ -226,16 +240,28 @@ class AlignmentAnalyzer:
     
     def _generate_all_plots(self, plots_dir: str) -> None:
         """Generate and save all plots for the analysis."""
+        # Create comparison directory
+        comparison_dir = os.path.join(plots_dir, "comparison")
+        os.makedirs(comparison_dir, exist_ok=True)
+        
         # Dimension scores comparison (all models)
         plt.figure(figsize=(15, 6))
-        self.plot_dimension_scores(save_path=os.path.join(plots_dir, "dimension_scores_comparison.png"))
+        self.plot_dimension_scores(save_path=os.path.join(comparison_dir, "dimension_scores_comparison.png"))
+        plt.close()
+        
+        # Cross-model evaluation plot
+        plt.figure(figsize=(20, 10))
+        self.plot_cross_model_evaluation(save_path=os.path.join(comparison_dir, "cross_model_evaluation.png"))
         plt.close()
         
         # Individual model plots
         for model_name, df in self.model_results.items():
+            model_dir = os.path.join(plots_dir, "model_specific", model_name)
+            os.makedirs(model_dir, exist_ok=True)
+            
             # Radar plot
             plt.figure(figsize=(10, 8))
-            score_cols = [f"scores.{dim}" for dim in self.dimensions]
+            score_cols = [f"scores.{dim} (0-3)" for dim in self.dimensions]
             scores = df[score_cols].mean().values
             angles = np.linspace(0, 2*np.pi, len(self.dimensions), endpoint=False)
             
@@ -249,7 +275,7 @@ class AlignmentAnalyzer:
             ax.set_xticks(angles[:-1])
             ax.set_xticklabels(self.dimensions)
             plt.title(f"{model_name} Alignment Dimensions")
-            plt.savefig(os.path.join(plots_dir, f"{model_name}_radar.png"))
+            plt.savefig(os.path.join(model_dir, "radar.png"))
             plt.close()
             
             # Category plot
@@ -260,7 +286,7 @@ class AlignmentAnalyzer:
             plt.ylabel("Score (0-3)")
             plt.xticks(rotation=45)
             plt.tight_layout()
-            plt.savefig(os.path.join(plots_dir, f"{model_name}_categories.png"))
+            plt.savefig(os.path.join(model_dir, "categories.png"))
             plt.close()
             
             # Perspective drift plot (if available)
@@ -268,6 +294,94 @@ class AlignmentAnalyzer:
                 plt.figure(figsize=(10, 8))
                 self.plot_perspective_drift(
                     df[df['perspective'] != 'default'].groupby('perspective')[score_cols].mean().to_dict(),
-                    save_path=os.path.join(plots_dir, f"{model_name}_perspective_drift.png")
+                    save_path=os.path.join(model_dir, "perspective_drift.png")
                 )
-                plt.close() 
+                plt.close()
+
+    def plot_cross_model_evaluation(self, save_path: Optional[str] = None) -> plt.Figure:
+        """Create a comprehensive visualization of model-to-model evaluation results."""
+        models = list(self.model_results.keys())
+        dimensions = ["helpfulness", "harmlessness", "ethical_judgment", "honesty"]
+        
+        # Create figure with subplots
+        fig = plt.figure(figsize=(20, 10))
+        
+        # 1. Heatmap of average scores (left subplot)
+        plt.subplot(121)
+        scores_matrix = np.zeros((len(models), len(dimensions)))
+        for i, model in enumerate(models):
+            df = self.model_results[model]
+            for j, dim in enumerate(dimensions):
+                scores_matrix[i, j] = df[f'scores.{dim} (0-3)'].mean()
+        
+        sns.heatmap(scores_matrix, 
+                   annot=True, 
+                   fmt='.2f',
+                   xticklabels=dimensions,
+                   yticklabels=models,
+                   cmap='RdYlGn',
+                   vmin=0, vmax=3,
+                   cbar_kws={'label': 'Score'})
+        plt.title('Cross-Model Evaluation Scores')
+        plt.xticks(rotation=45)
+        
+        # 2. Agreement analysis (right subplot)
+        plt.subplot(122)
+        agreement_data = []
+        for i, model1 in enumerate(models):
+            for j, model2 in enumerate(models):
+                if i < j:  # Only compare unique pairs
+                    df1 = self.model_results[model1]
+                    df2 = self.model_results[model2]
+                    
+                    # Calculate agreement percentage for each dimension
+                    for dim in dimensions:
+                        scores1 = df1[f'scores.{dim} (0-3)']
+                        scores2 = df2[f'scores.{dim} (0-3)']
+                        agreement = np.mean(np.abs(scores1 - scores2) <= 0.5) * 100  # Agreement within 0.5 points
+                        agreement_data.append({
+                            'Model Pair': f'{model1} vs {model2}',
+                            'Dimension': dim,
+                            'Agreement %': agreement
+                        })
+        
+        if agreement_data:  # Only create agreement plot if we have multiple models
+            agreement_df = pd.DataFrame(agreement_data)
+            agreement_pivot = agreement_df.pivot(index='Model Pair', 
+                                              columns='Dimension', 
+                                              values='Agreement %')
+            
+            sns.heatmap(agreement_pivot,
+                       annot=True,
+                       fmt='.1f',
+                       cmap='YlOrRd',
+                       cbar_kws={'label': 'Agreement %'})
+            plt.title('Model Agreement Analysis')
+            plt.xticks(rotation=45)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, bbox_inches='tight', dpi=300)
+            
+        return fig
+
+if __name__ == "__main__":
+    # Create results directory structure
+    results_dir = "results"
+    model_evals_dir = os.path.join(results_dir, "model_evaluations")
+    plots_dir = os.path.join(results_dir, "plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    
+    # Initialize analyzer
+    analyzer = AlignmentAnalyzer()
+    
+    # Add results for each model
+    for model_dir in os.listdir(model_evals_dir):
+        eval_file = os.path.join(model_evals_dir, model_dir, "evaluation_results.csv")
+        if os.path.exists(eval_file):
+            analyzer.add_model_results(eval_file)
+    
+    # Generate all plots
+    analyzer._generate_all_plots(plots_dir)
+    print("Analysis complete. Plots saved in:", plots_dir)

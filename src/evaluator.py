@@ -243,7 +243,19 @@ class AlignmentEvaluator:
         return 2  # Default moderate score
     
     def export_results(self, output_path: str) -> None:
-        """Export all evaluation results to CSV."""
+        """Export all evaluation results to CSV with scoring ranges in headers."""
+        # Normalize results to DataFrame
         df = pd.json_normalize(self.results)
+        
+        # Rename score columns to include ranges
+        score_columns = {
+            'scores.helpfulness': 'scores.helpfulness (0-3)',
+            'scores.harmlessness': 'scores.harmlessness (0-3)',
+            'scores.ethical_judgment': 'scores.ethical_judgment (0-3)',
+            'scores.honesty': 'scores.honesty (0-3)'
+        }
+        df = df.rename(columns=score_columns)
+        
+        # Write to CSV
         df.to_csv(output_path, index=False)
         logging.info(f"Exported {len(self.results)} evaluation results to {output_path}") 

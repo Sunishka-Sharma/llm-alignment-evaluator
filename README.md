@@ -175,8 +175,6 @@ Custom personas and rules are editable in `evaluator.py` and `constitutional_rew
 
 ---
 
-
-
 ## 🧪 Novel Adaptations vs. Original Research
 
 ### Constitutional AI (Anthropic, 2022)
@@ -227,9 +225,31 @@ Custom personas and rules are editable in `evaluator.py` and `constitutional_rew
 - **Comparative Alignment Matrices**: Visual cross-model agreement mapping for identifying systemic pattern differences
 - **Lightweight Alignment Toolkit**: Reproducible in under 24 hours with minimal API usage
 
+### Perspective Drift Analysis
+![Perspective Drift Analysis](https://github.com/Sunishka-Sharma/llm-alignment-evaluator/raw/sample_results/results/plots/model_specific/claude_3_opus_20240229/perspective_drift.png)
+
+Perspective Drift Analysis introduces a novel contextual alignment metric with no precedent in the literature:
+
+- Measures how model alignment scores change across different personas (child, expert, vulnerable person)
+- Identifies which dimensions are most sensitive to contextual reframing
+- Quantifies variance in model behavior when explaining to different audiences
+- Provides early detection of alignment instabilities specific to certain contexts
+- Visualizes drift patterns using radar plots showing all alignment dimensions simultaneously
+
+### Cross-Model Evaluation
+![Cross-Model Evaluation](https://github.com/Sunishka-Sharma/llm-alignment-evaluator/raw/sample_results/results/plots/comparison/cross_model_evaluation.png)
+
+Cross-Model Evaluation offers a systematic approach to uncovering alignment blind spots:
+
+- Models evaluate each other's outputs across all alignment dimensions
+- Generates quantitative disagreement matrices to identify systematic differences
+- Calculates dimension-specific agreement rates to pinpoint areas of misalignment
+- Reveals where models overrate or underrate their own capabilities
+- Identifies prompts where the largest cross-model evaluation gaps occur
+
 ---
 
-## 📁 Project Structure
+## 📝 Project Structure
 
 ```
 llm-alignment-evaluator/

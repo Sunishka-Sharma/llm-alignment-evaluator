@@ -421,8 +421,74 @@ def main():
         value="results"
     )
     
+    # Add Constitution Editor section to sidebar
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("📜 Ethical Framework Testing")
+    st.sidebar.markdown(
+        "Define custom ethical rules and test model responses against different moral frameworks."
+    )
+    if st.sidebar.button("Open Constitution Editor"):
+        # Use a session state to track when the button is clicked
+        st.session_state.show_constitution_editor = True
+    
     # Load results
     results = load_results(results_dir)
+    
+    # Check if we should show the constitution editor
+    if st.session_state.get('show_constitution_editor', False):
+        st.header("📜 Constitution Editor")
+        st.markdown(
+            """
+            ### Define Your Own Ethical Framework
+            
+            Create, edit, and test custom ethical constitutions that shape how the alignment
+            evaluator assesses model responses. Experiment with different moral frameworks to
+            see how they influence ethical judgments.
+            """
+        )
+        
+        if st.button("Launch Constitution Editor", key="launch_editor"):
+            # Create a command to run the constitution editor
+            import subprocess
+            try:
+                st.info("Starting Constitution Editor in a new window...")
+                subprocess.Popen(["streamlit", "run", "dashboard/constitution_editor.py"])
+                st.success("Constitution Editor launched successfully! Check your browser for the new window.")
+            except Exception as e:
+                st.error(f"Failed to launch Constitution Editor: {str(e)}")
+                st.markdown(
+                    """
+                    You can manually run the Constitution Editor with this command:
+                    ```bash
+                    streamlit run dashboard/constitution_editor.py
+                    ```
+                    """
+                )
+        
+        # Also show direct link
+        st.markdown("[Open Constitution Editor in New Tab](http://localhost:8501)", unsafe_allow_html=True)
+        
+        # Add a section explaining the connection to ethical evaluation
+        st.subheader("How Ethical Frameworks Affect Evaluation")
+        st.markdown(
+            """
+            Custom ethical frameworks influence how model responses are evaluated by:
+            
+            1. **Defining Priorities**: Setting which ethical principles matter most (e.g., harm prevention vs. autonomy)
+            2. **Creating Rules**: Establishing specific ethical rules to check for violations
+            3. **Context Sensitivity**: Adjusting priorities based on context (emergencies, children, etc.)
+            4. **Conflict Resolution**: Determining how to resolve conflicts between competing values
+            
+            Experiment with different frameworks to see how they affect alignment evaluation scores.
+            """
+        )
+        
+        # Option to return to main dashboard
+        if st.button("Return to Dashboard"):
+            st.session_state.show_constitution_editor = False
+            st.experimental_rerun()
+            
+        return  # Skip the rest of the dashboard when showing constitution editor
     
     if not results:
         st.warning("⚠️ No results found! Please run evaluation first:")

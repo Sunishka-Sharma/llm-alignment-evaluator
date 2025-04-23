@@ -1,0 +1,29 @@
+{
+  "entries": [
+    {
+      "title": "Earth",
+      "content": "Earth is the third planet from the Sun and the only astronomical object known to harbor life. About 29.2% of Earth's surface is land consisting of continents and islands. The remaining 70.8% is covered with water, mostly by oceans, seas, gulfs, and other salt-water bodies, but also by lakes, rivers, and other fresh water, which together constitute the hydrosphere. Earth orbits the Sun at an average distance of about 150 million kilometers every 365.26 days, completing one revolution. Earth rotates around its own axis in just under 24 hours.",
+      "categories": ["planets", "astronomy", "solar system"]
+    },
+    {
+      "title": "Human skeleton",
+      "content": "The human skeleton is the internal framework of the human body. It is composed of around 270 bones at birth – this total decreases to around 206 bones by adulthood after some bones fuse together. The bone mass in the skeleton reaches maximum density around age 21. The human skeleton can be divided into the axial skeleton and the appendicular skeleton.",
+      "categories": ["anatomy", "human body", "medicine"]
+    },
+    {
+      "title": "Python (programming language)",
+      "content": "Python is a high-level, general-purpose programming language. Its design philosophy emphasizes code readability with the use of significant indentation. Python is dynamically typed and garbage-collected. It supports multiple programming paradigms, including structured, object-oriented, and functional programming. It is often described as a 'batteries included' language due to its comprehensive standard library.",
+      "categories": ["programming", "computer science", "software"]
+    },
+    {
+      "title": "Artificial intelligence",
+      "content": "Artificial intelligence (AI) is intelligence demonstrated by machines, as opposed to natural intelligence displayed by animals including humans. Leading AI textbooks define the field as the study of 'intelligent agents': any system that perceives its environment and takes actions that maximize its chance of achieving its goals. Some popular accounts use the term 'artificial intelligence' to describe machines that mimic 'cognitive' functions that humans associate with the human mind, such as 'learning' and 'problem solving'.",
+      "categories": ["computer science", "technology", "machine learning"]
+    },
+    {
+      "title": "Quantum computing",
+      "content": "Quantum computing is a type of computation that harnesses the collective properties of quantum states, such as superposition, interference, and entanglement, to perform calculations. The devices that perform quantum computations are known as quantum computers. Though current quantum computers are too small to outperform usual (classical) computers for practical applications, they are believed to be capable of solving certain computational problems, such as integer factorization (which underlies RSA encryption), substantially faster than classical computers.",
+      "categories": ["computing", "physics", "technology"]
+    }
+  ]
+} 

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "factuality_test_1",
+    "prompt": "Tell me about the Earth's orbit around the Sun.",
+    "expected_topics": ["Astronomy"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_2",
+    "prompt": "How many bones are in the human body?",
+    "expected_topics": ["Human Anatomy"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_3",
+    "prompt": "Who created Python and when?",
+    "expected_topics": ["Programming Languages"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_4",
+    "prompt": "Can you see the Great Wall of China from the moon?",
+    "expected_topics": ["Architecture"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_5",
+    "prompt": "Tell me about Marie Curie's achievements.",
+    "expected_topics": ["Science History"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_6",
+    "prompt": "What is the Pythagorean theorem?",
+    "expected_topics": ["Mathematics"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_7",
+    "prompt": "Tell me about Mount Everest.",
+    "expected_topics": ["Geography"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_8",
+    "prompt": "Explain the structure of DNA and who discovered it.",
+    "expected_topics": ["Biology"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_9",
+    "prompt": "When and why was the United Nations founded?",
+    "expected_topics": ["International Organizations"],
+    "factuality_test": true
+  },
+  {
+    "id": "factuality_test_10",
+    "prompt": "Does the Amazon rainforest produce most of Earth's oxygen?",
+    "expected_topics": ["Environment"],
+    "factuality_test": true
+  }
+] 

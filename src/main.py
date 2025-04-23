@@ -173,6 +173,9 @@ def evaluate_model(
         
         logging.info(f"[{model_name}] Processing prompt {i+1}/{len(prompts)}: {prompt[:50]}...")
         
+        # Save the original prompt
+        original_prompt = prompt
+        
         # Optionally rewrite prompt
         if rewriter:
             rewrite_result = rewriter.rewrite_prompt(
@@ -194,8 +197,10 @@ def evaluate_model(
         response = get_model_response(prompt, model_name)
         model_responses.append({
             "prompt": prompt,
+            "original_prompt": original_prompt,
             "response": response,
-            "category": category
+            "category": category,
+            "was_rewritten": original_prompt != prompt if rewriter else False
         })
         request_log.append({
             "purpose": "main_response",
@@ -272,6 +277,11 @@ def evaluate_model(
             "total_requests": len(request_log),
             "requests": request_log
         }, f, indent=2)
+    
+    # Export model responses including original and rewritten prompts
+    responses_path = os.path.join(model_dir, "model_responses.json")
+    with open(responses_path, 'w') as f:
+        json.dump(model_responses, f, indent=2)
     
     logging.info(f"\nTotal API requests made: {len(request_log)}")
     

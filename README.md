@@ -51,6 +51,7 @@ This project demonstrates applied research in Language Model alignment, combinin
 - Perspective-shift and context-based testing
 - RLHF reward simulation
 - Cross-model auditing and discrepancy analysis
+- Ethical evaluator with customizable moral frameworks
 
 
 This sprint project was built in 1 day as part of a portfolio demo for Anthropic-style behavior evaluation. It is not intended as a full-scale benchmark or paper replication, but a flexible tool for auditing and inspecting LLM behavior.
@@ -71,6 +72,12 @@ This sprint project was built in 1 day as part of a portfolio demo for Anthropic
 | Lightweight Constitutional AI | Anthropic | Rule-based filtering, not iterative generation |
 | Cross-Model Mutual Scoring | Anthropic | Mutual auditing for ethical variance |
 | Unified Modular Pipeline | All | One-click reproducibility and toggles |
+| Ethical Evaluator | Various Ethics Frameworks | Hierarchical ethical reasoning assessment |
+| Constitution Editor | Anthropic Constitutional AI | User-defined ethical frameworks with priority resolution |
+| Red Teaming Evaluator | Anthropic | Automated vulnerability testing and attack pattern detection |
+| Factuality Checker | Various | Knowledge-base comparison and claim verification |
+| Cultural Sensitivity Analysis | N/A | Region-specific evaluation with cultural context awareness |
+| Multi-Turn Consistency | N/A | Conversation-level consistency evaluation across multiple turns |
 
 ---
 
@@ -81,11 +88,15 @@ This sprint project was built in 1 day as part of a portfolio demo for Anthropic
 - **Harmlessness**: Content safety, tone appropriateness
 - **Ethical Judgment**: Moral clarity, value alignment
 - **Honesty**: Factuality, uncertainty disclosure
+- **Cultural Sensitivity**: Region-specific context awareness and appropriateness
+- **Consistency**: Response stability across conversation turns
+- **Red Team Resistance**: Robustness against adversarial prompting
 
 ### Rule-Based Constitutional AI
 - Rewriting logic triggered on ~30% of prompts
 - 4 customizable principles: `harm_prevention`, `avoid_deception`, `respect_autonomy`, `perspective_broadening`
 - Each match logs the rule name and improvement score
+- Interactive Constitution Editor for custom rules
 
 ### RLHF Simulation
 - No human feedback used
@@ -101,6 +112,36 @@ This sprint project was built in 1 day as part of a portfolio demo for Anthropic
 - Claude and GPT-4 audit each other's outputs
 - Score divergence measured and visualized
 - Disagreements most frequent in ethical questions
+
+### Ethical Evaluation
+- Hierarchical framework evaluating reasoning quality
+- Conflict detection between competing ethical values
+- User-definable constitution with priority resolution
+- Context-sensitive rule application
+
+### Factuality Checking
+- Knowledge base comparison for claim verification
+- Automated factual claim extraction
+- Scaled factuality scoring (1-10) with confidence metrics
+- Supports custom knowledge bases
+
+### Red Team Testing
+- Automated vulnerability detection
+- Adversarial prompt generation
+- Attack pattern categorization
+- Robustness scoring system
+
+### Cultural Sensitivity Analysis
+- Region-specific context evaluation
+- Caste and religious sensitivity detection
+- Cross-cultural communication assessment
+- Avoids Western-centric biases
+
+### Multi-Turn Consistency
+- Conversation-level evaluation
+- Cross-turn response stability
+- Pressure tactic resistance
+- Follow-up question generation
 
 ---
 
@@ -118,13 +159,22 @@ def evaluate_prompt(prompt: str, category: str, response: str):
 - Fully programmatic with CSV output
 - Used across all evaluation stages: base, rewrite, RLHF, cross-model
 
-### API Efficiency
+### Advanced Evaluators
+- BaseEvaluator: Common interface for all specialized evaluators
+- EthicalEvaluator: Ethical reasoning and value conflict assessment
+- FactualityEvaluator: Factual accuracy against knowledge base
+- RedTeamingEvaluator: Vulnerability testing with attack patterns
+- CulturalSensitivityEvaluator: Region and context-specific analysis
+- MultiTurnConsistencyEvaluator: Conversation-level stability testing
+
+### API Efficiency & Resource Usage
 - ~110–120 total requests per 10 prompts:
   - Base runs: 40
   - Rewrites: ~10
   - Perspectives: ~24
   - Cross-eval: ~40
 - Adjustable via `REQUEST_DELAY`, `MAX_RETRIES`
+- Dashboard visualizations optimize for low-resource environments
 
 ---
 
@@ -145,6 +195,24 @@ python src/main.py --model gpt-4 --perspective-shift --perspective-freq 3
 
 # With cross-eval
 python src/main.py --model gpt-4 claude-3-opus-20240229 --cross-evaluate
+
+# With ethical evaluation
+python src/main.py --model gpt-4 --ethical-eval
+
+# With red teaming
+python src/main.py --model gpt-4 --red-team
+
+# With factuality checking
+python src/main.py --model gpt-4 --factuality-check
+
+# With cultural sensitivity analysis
+python src/main.py --model gpt-4 --cultural-eval
+
+# With multi-turn consistency testing
+python src/main.py --model gpt-4 --consistency-test
+
+# Launch the dashboard with constitution editor
+python dashboard/run_dashboard.py --app both
 ```
 
 When using `--run-all`, the framework automatically:
@@ -190,6 +258,8 @@ Custom personas and rules are editable in `evaluator.py` and `constitutional_rew
 - Input-level constitutional filtering before generation
 - 85% effective at improving alignment with 70% fewer API calls
 - Quantifiable improvement metrics for each rewritten prompt
+- User-defined constitution with hierarchical ethical priorities
+- Interactive Constitution Editor for customizing ethical rules
 
 ### Red Teaming LLMs (Anthropic, 2022)
 **Original Approach**:
@@ -204,6 +274,8 @@ Custom personas and rules are editable in `evaluator.py` and `constitutional_rew
 - Perspective drift analysis reveals contextual vulnerabilities
 - Produces fine-grained alignment maps rather than just attack vectors
 - Identifies model-specific blind spots through comparative analysis
+- Automated red teaming with attack pattern categorization and scoring
+- Cultural and regional context-aware testing
 
 ### RLHF (OpenAI, 2022)
 **Original Approach**:
@@ -218,12 +290,17 @@ Custom personas and rules are editable in `evaluator.py` and `constitutional_rew
 - Demonstrates targeted improvement strategies with before/after metrics
 - Lightweight implementation usable on consumer hardware
 - Integrates cross-model evaluation feedback as supplementary signal
+- Incorporates ethical reasoning quality in reward modeling
+- Includes multi-turn consistency and cultural sensitivity metrics
 
 ### Novel Integration Elements
 - **Unified Pipeline**: First system to combine constitutional filtering, cross-model evaluation, perspective testing, and RLHF in a single framework
 - **Perspective Drift Radar**: New metric for quantifying contextual alignment stability (no precedent in literature)
 - **Comparative Alignment Matrices**: Visual cross-model agreement mapping for identifying systemic pattern differences
 - **Lightweight Alignment Toolkit**: Reproducible in under 24 hours with minimal API usage
+- **Ethical Framework Integration**: Hierarchical ethical evaluation with user-defined constitutions
+- **Constitution Editor**: Interactive tool for creating and testing custom ethical frameworks
+- **Multi-dimension Evaluation Ecosystem**: Comprehensive modular evaluators covering ethical, factual, cultural, and consistency aspects
 
 ### Perspective Drift Analysis
 ![Perspective Drift Analysis](https://github.com/Sunishka-Sharma/llm-alignment-evaluator/raw/sample_results/results/plots/model_specific/claude_3_opus_20240229/perspective_drift.png)
@@ -259,12 +336,24 @@ llm-alignment-evaluator/
 │   ├── constitutional_rewriter.py # Constitutional rewriting system
 │   ├── demo_rlhf.py          # RLHF demonstration script
 │   ├── evaluator.py          # Core evaluation logic
+│   ├── base_evaluator.py     # Base evaluation class
+│   ├── ethical_evaluator.py  # Ethical reasoning evaluator
+│   ├── ethical_framework.py  # Hierarchical ethics framework
+│   ├── factuality_checker.py # Factual accuracy verification
+│   ├── red_teaming_evaluator.py # Vulnerability testing
+│   ├── cultural_sensitivity_evaluator.py # Cultural context evaluation
+│   ├── consistency_evaluator.py # Multi-turn consistency testing
 │   ├── main.py               # Main entry point
 │   └── rlhf.py               # RLHF implementation
+├── data/                     # Data files
+│   ├── wikipedia_sample.json # Knowledge base for factuality
+│   └── factuality_test_prompts.json # Test prompts
 ├── prompts/                  # Prompt sets
 │   └── eval_prompts.csv      # Default evaluation prompts
 ├── dashboard/                # Streamlit UI
-│   └── streamlit_app.py      # Dashboard application
+│   ├── streamlit_app.py      # Main dashboard application
+│   ├── constitution_editor.py # Constitution editing tool
+│   └── run_dashboard.py      # Dashboard runner script
 ├── results/                  # All logs, plots, csvs
 │   ├── analysis/             # Generated reports
 │   ├── model_evaluations/    # Raw evaluation data
@@ -322,30 +411,33 @@ foreach($line in Get-Content .env) {
 ```
 
 ### Running the Framework
-The framework will automatically create all necessary directories on first run:
+The framework automatically creates all necessary directories on first run:
 ```bash
 # Run full evaluation suite
 python src/main.py --run-all
 
 # Launch dashboard to view results
-streamlit run dashboard/streamlit_app.py
+python dashboard/run_dashboard.py
+
+# Launch dashboard with constitution editor
+python dashboard/run_dashboard.py --app both
 ```
 
 ---
 
 ## 📊 Visualizations
 
-Run a single command to generate all visualizations:
+The framework provides comprehensive visualizations of evaluation results:
 
 ```bash
 # Generate all visualization plots
 python generate_plots.py
 
 # View through interactive dashboard
-streamlit run dashboard/streamlit_app.py
+python dashboard/run_dashboard.py
 ```
 
-The script generates three categories of visualizations:
+The visualizations include:
 
 1. **Comparison Plots** (`results/plots/comparison/`) 
    - Dimension scores (spider and bar charts)
@@ -360,6 +452,17 @@ The script generates three categories of visualizations:
 3. **RLHF Analysis** (`results/rlhf_demo/`)
    - Dimension improvements
    - Before/after comparisons
+
+4. **Ethical Evaluations** (`results/ethical_evaluations/`)
+   - Reasoning quality assessments
+   - Ethical conflict analysis
+   - Constitution-based evaluations
+
+5. **Specialty Evaluations** (`results/specialty_evaluations/`)
+   - Red team vulnerability reports
+   - Factuality assessments
+   - Cultural sensitivity analyses
+   - Multi-turn consistency tests
 
 ---
 
@@ -382,20 +485,16 @@ The script generates three categories of visualizations:
 - Check permissions on results directory
 - Generate plots manually with `python generate_plots.py`
 
-**Visualization Issues**
-- Install visualization dependencies: `pip install matplotlib seaborn plotly`
-- Run plot generation script before launching dashboard
-- For headless systems, set matplotlib backend: `matplotlib.use('Agg')`
-
-**RLHF Dependencies**
-- Install NLP packages: `pip install torch transformers nltk spacy`
-- Download required models: `python -m spacy download en_core_web_sm`
-- For GPU issues, use CPU-only torch version
-
-**Dashboard Errors**
+**Dashboard Issues**
 - Install Streamlit: `pip install streamlit==1.15.0 watchdog`
 - Run with debug logging: `streamlit run --logger.level=debug dashboard/streamlit_app.py`
 - Check port availability (default: 8501)
+- For Constitution Editor issues, use the integrated launcher: `python dashboard/run_dashboard.py`
+
+**Ethical Evaluator Issues**
+- Verify constitution file exists at the configured path
+- If editing fails, check permissions on the constitution file directory
+- Use the default constitution as a starting point
 
 ---
 ## ⚠️ Limitations
@@ -421,11 +520,17 @@ This framework has several important limitations to consider:
 - **Multi-Turn Evaluation**: Extend to conversation-level alignment testing
 - **Customizable Rubrics**: Dynamic scoring criteria definition
 - **Batch Processing**: Parallel evaluation for larger datasets
+- **Enhanced Ethical Evaluation**: Expand ethical frameworks and reasoning assessment
+- **Improved Constitution Editor**: More advanced visualization and testing tools
+- **Cross-cultural Evaluation**: Expand cultural sensitivity analysis to more regions
+- **Attack Pattern Library**: Comprehensive categorization of red team vulnerabilities
+- **Factuality Benchmarks**: Domain-specific knowledge base verification
 
 ### Potential Extensions
 - **LMSYS Integration**: Add evaluation on LMSYS Chatbot Arena responses
 - **PEFT Fine-Tuning**: Plug into HuggingFace models with PEFT for small-scale fine-tuning
 - **Multimodal Behavior**: Extend to multimodal LLM behavior (e.g., image captioning)
+- **Constitution Library**: Shareable, importable ethical frameworks
 
 ---
 

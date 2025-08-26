@@ -552,3 +552,12 @@ MIT License — see [LICENSE](LICENSE)
 
 For Anthropic-style alignment evaluation, this project demonstrates modular, auditable, reproducible insight-driven implementation. All results are stored, plotted, and cross-auditable. Ideal for public portfolio or internal alignment evaluation tooling.
 
+---
+
+© 2025 Sunishka Sharma. All Rights Reserved.
+
+This project and its contents are protected under international copyright laws. Unauthorized reproduction, distribution, or use of any part of this project without explicit permission is prohibited.
+
+For inquiries or permissions, please contact: [sunishka20137@iiitd.ac.in]
+
+This work is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.

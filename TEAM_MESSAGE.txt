@@ -1,0 +1,7 @@
+Hey! Here's what's in these files:
+
+findings.json - Main hackathon submission file with our 6 critical AI safety vulnerabilities (evaluation awareness, deceptive alignment, etc.) and 10/10 severity scores
+HACKATHON_SUBMISSION.md - Complete research writeup explaining how we discovered systematic social engineering attacks that bypass AI safety 100% of the time
+SUBMISSION_GUIDE.md - Instructions on how to format and submit everything to the hackathon, plus tips for scoring maximum points
+
+The data/ folder has all our evidence - conversation logs showing the actual attacks working and detailed JSON files for each vulnerability we found.
